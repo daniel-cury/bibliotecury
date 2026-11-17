@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>bibliotecury</title>
+<meta name="description" content="bibliotecury: os livros que já li, com resumo e o que achei de cada um.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='6' y='3' width='6' height='26' rx='1' fill='%231F3FB0'/%3E%3Crect x='13' y='6' width='5' height='23' rx='1' fill='%23D9472B'/%3E%3Crect x='19' y='4' width='7' height='25' rx='1' fill='%23141414'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EDEBE6; --sheet:#F4F2ED; --ink:#141414; --muted:#6D6A63;
+  --cobalt:#1F3FB0; --verm:#D9472B; --rule:rgba(20,20,20,.9);
+  --ease:cubic-bezier(.2,.8,.2,1);
+  --H:min(46vh,31vw);
+  --sans:"Inter Tight",system-ui,sans-serif;
+  --serif:"Newsreader",Georgia,serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);overflow:hidden;
+  user-select:none;-webkit-user-select:none;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+a{color:inherit;text-decoration:none}
+@media (pointer:fine){html,body,button,a,.tape{cursor:none}}
+
+.grain{position:fixed;inset:0;z-index:40;pointer-events:none;opacity:.55;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .42 0 0 0 0 .38 0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+.lbl{font-family:var(--sans);font-weight:600;font-size:10.5px;line-height:1;letter-spacing:.09em;text-transform:uppercase;white-space:nowrap}
+.box{display:inline-flex;align-items:center;height:21px;padding:0 8px;border:1px solid var(--rule)}
+
+/* top bar */
+.top{position:fixed;left:0;right:0;top:0;height:84px;padding:0 32px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;z-index:30}
+.top .l{justify-self:start}.top .r{justify-self:end}
+.logo{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--cobalt)}
+.logo b{font-family:var(--serif);font-weight:400;font-style:italic;font-size:30px;line-height:1;letter-spacing:-.01em}
+.logo small{font-family:var(--sans);font-weight:600;font-size:9px;letter-spacing:.34em;padding-left:.34em;text-transform:uppercase}
+
+/* tabs */
+.tabs{position:fixed;left:50%;transform:translateX(-50%);top:calc(50% - var(--H)/2 - 86px);display:flex;z-index:30;max-width:calc(100vw - 32px)}
+.tabs .ind{position:absolute;left:0;top:0;height:23px;background:var(--cobalt);width:0;transition:width .6s var(--ease),transform .6s var(--ease)}
+.tabs button{position:relative;height:23px;padding:0 11px;border:1px solid var(--rule);margin-left:-1px;transition:color .45s var(--ease)}
+.tabs button.on{color:#fff}
+
+/* shelf */
+.shelf{position:fixed;left:0;right:0;top:calc(50% - var(--H)/2 - 40px);height:calc(var(--H) + 80px);perspective:2200px;perspective-origin:50% 50%;touch-action:pan-y;z-index:10}
+.stage{position:absolute;left:50%;top:50%;width:0;height:0;transform-style:preserve-3d}
+.tape{position:absolute;left:0;top:0;width:0;height:0;transform-style:preserve-3d;will-change:transform}
+.face{position:absolute;height:var(--Hpx);top:calc(var(--Hpx) / -2);backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:2px;overflow:hidden}
+.face::after{content:"";position:absolute;inset:0;background:#000;opacity:var(--shade,0);pointer-events:none}
+.sp{width:var(--ws);left:calc(var(--ws) / -2);transform:translateZ(calc(var(--d) / 2));
+  background:var(--c);color:#F1E9D6;display:flex;flex-direction:column;align-items:center;
+  padding:calc(var(--ws)*.22) 0 calc(var(--ws)*.18);gap:calc(var(--ws)*.16);
+  box-shadow:inset 2px 0 0 rgba(255,255,255,.12),inset -3px 0 0 rgba(0,0,0,.22)}
+.sp::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(90deg,rgba(0,0,0,.18),rgba(255,255,255,.08) 22%,rgba(0,0,0,0) 45%,rgba(0,0,0,.14))}
+.sp .mk{flex:none;width:calc(var(--ws)*.5);height:calc(var(--ws)*.5);border-radius:50%;border:1px solid currentColor;display:grid;place-items:center}
+.sp .mk::after{content:"";width:40%;height:40%;border-radius:50%;background:currentColor}
+.sp .t{flex:1;min-height:0;writing-mode:vertical-rl;font-family:var(--serif);font-size:calc(var(--ws)*.4);line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.01em}
+.sp .a{flex:none;writing-mode:vertical-rl;font-family:var(--sans);font-weight:600;font-size:calc(var(--ws)*.16);letter-spacing:.14em;text-transform:uppercase;opacity:.85}
+.sp .n{flex:none;font-family:var(--sans);font-weight:600;font-size:calc(var(--ws)*.15);border:1px solid currentColor;padding:2px 3px;letter-spacing:.05em}
+.cv{width:var(--d);left:calc(var(--d) / -2);transform:rotateY(90deg) translateZ(calc(var(--ws) / 2));background:#EFE6D2;box-shadow:0 30px 60px -28px rgba(20,16,10,.55)}
+.cv svg{display:block;width:100%;height:100%}
+
+/* play */
+.play{position:fixed;width:42px;height:42px;margin:-21px 0 0 -21px;border-radius:50%;border:1px solid var(--cobalt);color:var(--cobalt);background:rgba(237,235,230,.75);display:grid;place-items:center;z-index:35;transform:scale(0)}
+.play svg{width:12px;height:12px;margin-left:2px}
+
+/* caption */
+.cap{position:fixed;left:0;right:0;top:calc(50% + var(--H)/2 + 30px);display:flex;flex-direction:column;align-items:center;gap:9px;pointer-events:none;z-index:20}
+.mask{position:relative;overflow:hidden;width:min(92vw,760px);text-align:center}
+.mask>span{display:block}
+.mask>span+span{position:absolute;left:0;right:0;top:0}
+.c-title{font-family:var(--serif);font-size:31px;line-height:1.12;letter-spacing:-.01em}
+.c-sub{color:var(--cobalt);font-weight:500}
+.c-meta{font-family:var(--sans);font-weight:500;font-size:11px;letter-spacing:.08em}
+
+/* arrows */
+.arrow{position:fixed;top:calc(50% + var(--H)/2 + 40px);width:44px;height:44px;display:grid;place-items:center;z-index:30}
+.arrow svg{width:18px;height:10px}
+.arrow.prev{left:20px}.arrow.next{right:20px}
+
+/* footer */
+.foot{position:fixed;left:32px;right:32px;bottom:26px;display:flex;justify-content:space-between;z-index:30}
+
+/* cursor */
+.cur{position:fixed;left:0;top:0;width:58px;height:58px;margin:-29px 0 0 -29px;z-index:100;pointer-events:none;display:none}
+@media (pointer:fine){.cur{display:block}}
+.cur .ring{position:absolute;inset:0;border:1.5px solid var(--ink);border-radius:50%;background:transparent;
+  transition:transform .5s var(--ease),background-color .4s var(--ease),border-color .4s var(--ease)}
+.cur .dot{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:var(--ink);transition:transform .4s var(--ease)}
+.cur .txt{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:#fff;font-weight:600;font-size:10px;line-height:1.25;letter-spacing:.1em;transform:scale(0);transition:transform .45s var(--ease)}
+.cur.spine .ring{transform:scale(.72)}
+.cur.btn .ring{transform:scale(.55)}.cur.btn .dot{transform:scale(0)}
+.cur.open .ring{transform:scale(1.75);background:var(--cobalt);border-color:var(--cobalt)}
+.cur.open .dot{transform:scale(0)}.cur.open .txt{transform:scale(1)}
+
+/* detail */
+.detail{position:fixed;inset:0;z-index:60;background:var(--sheet);visibility:hidden;overflow-y:auto;
+  display:grid;grid-template-columns:1fr 1fr;gap:4vw;padding:110px 6vw 56px 7vw;align-items:center;user-select:text;-webkit-user-select:text}
+.detail .close{position:absolute;left:32px;top:31px}
+.detail .dlogo{position:absolute;left:0;right:0;top:0;height:84px;display:grid;place-items:center;pointer-events:none}
+.dl{display:flex;flex-direction:column;gap:18px;max-width:560px;justify-self:center;width:100%}
+.m{overflow:hidden}
+.m>.r{will-change:transform}
+.d-sub{color:var(--cobalt)}
+.d-title{font-family:var(--serif);font-weight:400;font-size:clamp(44px,5.4vw,84px);line-height:1;letter-spacing:-.025em;padding-bottom:.08em}
+.d-meta{color:var(--muted)}
+.d-stars{font-size:18px;letter-spacing:.18em;color:var(--verm)}
+.d-stars i{font-style:normal;color:rgba(20,20,20,.18)}
+.d-h{margin-top:8px;display:flex;align-items:center;gap:10px}
+.d-h::after{content:"";flex:1;height:1px;background:var(--rule);opacity:.35}
+.d-p{font-family:var(--serif);font-size:17px;line-height:1.55;max-width:46ch}
+.d-credit{font-family:var(--serif);font-style:italic;font-size:15px;color:var(--muted)}
+.dr{justify-self:center;align-self:center;height:min(100%,78vh);aspect-ratio:400/600;max-width:100%}
+.dr svg{display:block;width:100%;height:100%;overflow:visible}
+
+@media (max-width:767px){
+  :root{--H:min(60vw,40svh)}
+  .top{height:64px;padding:0 16px}
+  .logo b{font-size:23px}.logo small{font-size:7.5px}
+  .top .lbl{font-size:9px}.top .r{display:none}
+  .tabs{top:calc(50% - var(--H)/2 - 70px)}
+  .tabs button{padding:0 7px;font-size:9px}
+  .c-title{font-size:24px}
+  .arrow.prev{left:6px}.arrow.next{right:6px}
+  .foot{left:16px;right:16px;bottom:18px}.foot .lbl{font-size:9px}
+  .foot .hint{display:none}
+  .detail{grid-template-columns:1fr;align-items:start;padding:84px 22px 40px;gap:24px}
+  .dr{order:-1;height:46svh}
+  .d-title{font-size:42px}.d-p{font-size:16px}
+  .detail .close{left:16px;top:21px}.detail .dlogo{height:64px}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <a class="l lbl box" href="https://github.com/daniel-cury/bibliotecury" target="_blank" rel="noopener">GitHub</a>
+  <div class="logo" aria-label="bibliotecury"><b>bibliotecury</b><small>Biblioteca pessoal</small></div>
+  <div class="r lbl" id="count"></div>
+</header>
+
+<nav class="tabs lbl" id="tabs" aria-label="Gêneros"><span class="ind" id="ind"></span></nav>
+
+<section class="shelf" id="shelf" aria-label="Prateleira de livros">
+  <div class="stage" id="stage"></div>
+</section>
+
+<button class="play" id="play" aria-label="Abrir livro">
+  <svg viewBox="0 0 12 12"><path d="M1 0 L12 6 L1 12 Z" fill="currentColor"/></svg>
+</button>
+
+<div class="cap" aria-live="polite">
+  <div class="mask c-title" id="cTitle"></div>
+  <div class="mask lbl c-sub" id="cSub"></div>
+  <div class="mask c-meta" id="cMeta"></div>
+</div>
+
+<button class="arrow prev" id="prev" aria-label="Livro anterior">
+  <svg viewBox="0 0 18 10" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M5 1 L1 5 L5 9 M1 5 H17"/></svg>
+</button>
+<button class="arrow next" id="next" aria-label="Próximo livro">
+  <svg viewBox="0 0 18 10" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M13 1 L17 5 L13 9 M17 5 H1"/></svg>
+</button>
+
+<footer class="foot">
+  <span class="lbl">© bibliotecury</span>
+  <span class="lbl hint">← → navegar · Enter abre</span>
+</footer>
+
+<div class="grain" aria-hidden="true"></div>
+
+<div class="detail" id="detail" role="dialog" aria-modal="true" aria-labelledby="dTitle">
+  <button class="close lbl box" id="close">Fechar</button>
+  <div class="dlogo"><div class="logo"><b>bibliotecury</b><small>Biblioteca pessoal</small></div></div>
+  <div class="dl" id="dl">
+    <div class="m"><div class="r lbl d-sub" id="dSub"></div></div>
+    <div class="m"><h1 class="r d-title" id="dTitle"></h1></div>
+    <div class="m"><div class="r lbl d-meta" id="dMeta"></div></div>
+    <div class="m"><div class="r d-stars" id="dStars"></div></div>
+    <div class="m"><div class="r lbl d-h">Resumo</div></div>
+    <div class="m"><p class="r d-p" id="dResumo"></p></div>
+    <div class="m"><div class="r lbl d-h">O que eu achei</div></div>
+    <div class="m"><p class="r d-p" id="dOpiniao"></p></div>
+    <div class="m"><p class="r d-credit" id="dCredit"></p></div>
+  </div>
+  <div class="dr" aria-hidden="true">
+    <svg viewBox="0 0 400 600" id="poster">
+      <defs>
+        <filter id="inkf" x="-50%" y="-50%" width="200%" height="200%">
+          <feTurbulence type="fractalNoise" baseFrequency=".011" numOctaves="3" seed="7" result="t"/>
+          <feDisplacementMap in="SourceGraphic" in2="t" scale="120" xChannelSelector="R" yChannelSelector="G"/>
+        </filter>
+        <mask id="inkm" maskUnits="userSpaceOnUse" x="-200" y="-200" width="800" height="1000">
+          <g filter="url(#inkf)" fill="#fff" id="blobs"></g>
+        </mask>
+        <clipPath id="pclip"><rect width="400" height="600"/></clipPath>
+      </defs>
+      <g clip-path="url(#pclip)"><g mask="url(#inkm)" id="pimg"></g></g>
+    </svg>
+  </div>
+</div>
+
+<div class="cur" id="cur" aria-hidden="true"><div class="ring"></div><div class="dot"></div><div class="txt">ABRIR</div></div>
+
+<script src="livros.js"></script>
+<script>
+(() => {
+const LIVROS = (window.LIVROS || []).filter(Boolean);
+if (!LIVROS.length) return;
+const N = LIVROS.length;
+const COPIES = Math.max(3, Math.ceil(42 / N));
+const L = COPIES * N;
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const E = 'cubic-bezier(.2,.8,.2,1)';
+const $ = id => document.getElementById(id);
+const mod = (a, n) => ((a % n) + n) % n;
+const ss = x => x * x * (3 - 2 * x);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const PAL = ['#1F3FB0','#D9472B','#141414','#2F6B4F','#C98A1B','#7A2E3A'];
+LIVROS.forEach((b, i) => { b.cor = b.cor || PAL[i % PAL.length]; });
+
+/* ---------- capas geradas (SVG 400×600) ---------- */
+function wrap(text, max) {
+  const words = String(text).split(/\s+/); const lines = []; let cur = '';
+  for (const w of words) {
+    if (cur && (cur + ' ' + w).length > max) { lines.push(cur); cur = w; } else cur = cur ? cur + ' ' + w : w;
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+function motif(i, c) {
+  const ink = '#141414', v = '#D9472B', cr = '#EFE6D2';
+  switch (i % 5) {
+    case 0: return `<circle cx="200" cy="410" r="96" fill="${c}"/><rect x="40" y="425" width="320" height="120" fill="${cr}"/>` +
+      [0,1,2,3,4].map(k => `<rect x="${60 + k*14}" y="${432 + k*20}" width="${280 - k*28}" height="7" fill="${ink}"/>`).join('') +
+      `<circle cx="290" cy="330" r="14" fill="${v}"/>`;
+    case 1: return [110,85,60,35].map((r,k) => `<path d="M${200-r} 520 A${r} ${r} 0 0 1 ${200+r} 520 Z" fill="${[c,cr,v,ink][k]}"/>`).join('') +
+      `<rect x="60" y="520" width="280" height="6" fill="${ink}"/>`;
+    case 2: { let s = ''; for (let y = 0; y < 4; y++) for (let x = 0; x < 6; x++)
+      s += `<circle cx="${75 + x*50}" cy="${340 + y*52}" r="${(x + y) % 3 === 0 ? 18 : 10}" fill="${(x*y) % 4 === 1 ? v : (x + y) % 2 ? ink : c}"/>`; return s; }
+    case 3: return `<polygon points="40,540 160,350 280,540" fill="${c}"/><polygon points="150,540 260,390 370,540" fill="${ink}"/><circle cx="300" cy="330" r="26" fill="${v}"/>`;
+    default: return `<g transform="rotate(-18 200 440)">${[0,1,2,3].map(k => `<rect x="${30 + k*70}" y="${330 + (k%2)*30}" width="44" height="190" fill="${[c,ink,v,c][k]}"/>`).join('')}</g>`;
+  }
+}
+function coverInner(b, i) {
+  if (b.capa) return `<rect width="400" height="600" fill="#EFE6D2"/><image href="${esc(b.capa)}" width="400" height="600" preserveAspectRatio="xMidYMid slice"/>`;
+  const lines = wrap(b.titulo, 11).slice(0, 4);
+  const longest = Math.max(...lines.map(l => l.length));
+  const fs = Math.min(70, Math.floor(330 / (longest * .5)));
+  const t = lines.map((l, k) => `<tspan x="40" dy="${k ? fs * .98 : 0}">${esc(l)}</tspan>`).join('');
+  return `<rect width="400" height="600" fill="#EFE6D2"/>
+    <rect x="0" y="0" width="400" height="10" fill="${b.cor}"/>
+    <text x="40" y="58" font-family="Inter Tight,system-ui,sans-serif" font-weight="600" font-size="13" letter-spacing="2.4" fill="#141414">${esc(String(b.autor).toUpperCase())}</text>
+    <rect x="40" y="72" width="320" height="1.5" fill="#141414"/>
+    <text x="40" y="${100 + fs * .85}" font-family="Newsreader,Georgia,serif" font-size="${fs}" letter-spacing="-1" fill="#141414">${t}</text>
+    ${motif(i, b.cor)}
+    <text x="40" y="578" font-family="Newsreader,Georgia,serif" font-style="italic" font-size="16" fill="#141414">bibliotecury</text>
+    <rect x="312" y="560" width="48" height="24" fill="none" stroke="#141414" stroke-width="1.5"/>
+    <text x="336" y="577" text-anchor="middle" font-family="Inter Tight,system-ui,sans-serif" font-weight="600" font-size="11" letter-spacing="1" fill="#141414">${b.ano ?? ''}</text>`;
+}
+const COVERS = LIVROS.map(coverInner);
+LIVROS.forEach(b => { if (b.capa) { const im = new Image(); im.src = b.capa; } });
+
+/* ---------- monta prateleira ---------- */
+const stage = $('stage');
+const tapes = [];
+const surname = a => String(a).trim().split(/\s+/).pop();
+for (let v = 0; v < L; v++) {
+  const i = v % N, b = LIVROS[i];
+  const el = document.createElement('div');
+  el.className = 'tape';
+  el.innerHTML = `<div class="face sp" style="--c:${esc(b.cor)}"><span class="mk"></span><span class="t">${esc(b.titulo)}</span><span class="a">${esc(surname(b.autor))}</span><b class="n">${String(i + 1).padStart(2, '0')}</b></div>
+    <div class="face cv"><svg viewBox="0 0 400 600" preserveAspectRatio="none">${COVERS[i]}</svg></div>`;
+  const t = { el, v, i, sp: el.children[0], cv: el.children[1], lift: 0, liftT: 0, vis: true };
+  el.addEventListener('pointerenter', () => { t.liftT = 1; hoverTape = t; });
+  el.addEventListener('pointerleave', () => { t.liftT = 0; if (hoverTape === t) hoverTape = null; });
+  el.addEventListener('click', e => onTapeClick(t, e));
+  stage.appendChild(el);
+  tapes.push(t);
+}
+$('count').textContent = `${N} ${N === 1 ? 'livro lido' : 'livros lidos'}`;
+
+/* ---------- medidas ---------- */
+let H, ws, d, gap, W, Hv, shelfCY;
+function measure() {
+  const p = document.createElement('div');
+  p.style.cssText = 'position:absolute;visibility:hidden;height:var(--H);width:1px;top:-9999px';
+  document.body.appendChild(p); H = p.getBoundingClientRect().height; p.remove();
+  ws = H * .15; d = H * 400 / 600; gap = H * .03;
+  W = innerWidth; Hv = innerHeight;
+  const r = $('shelf').getBoundingClientRect(); shelfCY = r.top + r.height / 2;
+  stage.style.setProperty('--Hpx', H + 'px');
+  stage.style.setProperty('--ws', ws + 'px');
+  stage.style.setProperty('--d', d + 'px');
+  placeTabs();
+}
+const B = r => Math.abs(r) < 1 ? (r + Math.sin(Math.PI * r) / Math.PI) / 2 : Math.sign(r) * .5;
+const F = r => r * (ws + gap) + (d - ws + 1.6 * gap) * B(r);
+
+/* ---------- estado ---------- */
+let s = Math.floor(COPIES / 2) * N, T = s;
+let active = -1, hoverTape = null, dragging = false, isOpen = false, onCover = false;
+let mx = innerWidth / 2, my = innerHeight / 2, cx = mx, cy = my, tiltX = 0, tiltY = 0;
+let last = performance.now();
+
+/* ---------- abas (gêneros) ---------- */
+const genres = [...new Set(LIVROS.map(b => b.genero).filter(Boolean))];
+const tabsEl = $('tabs'), ind = $('ind');
+const tabBtns = [];
+function mkTab(label, fn) { const bt = document.createElement('button'); bt.textContent = label; bt.addEventListener('click', fn); tabsEl.appendChild(bt); return bt; }
+mkTab('Todos', () => goTo(0));
+genres.forEach(g => tabBtns.push([g, mkTab(g, () => {
+  const cur = mod(Math.round(T), N); let best = null;
+  LIVROS.forEach((b, i) => { if (b.genero !== g) return;
+    let dd = mod(i - cur, N); if (dd > N / 2) dd -= N;
+    if (best === null || Math.abs(dd) < Math.abs(best)) best = dd; });
+  if (best !== null) { T = Math.round(T) + best; }
+})]));
+function goTo(i) { const cur = mod(Math.round(T), N); let dd = mod(i - cur, N); if (dd > N / 2) dd -= N; T = Math.round(T) + dd; }
+function placeTabs() {
+  const g = active >= 0 ? LIVROS[active].genero : null;
+  tabBtns.forEach(([name, bt]) => {
+    const on = name === g; bt.classList.toggle('on', on);
+    if (on) { ind.style.width = bt.offsetWidth + 'px'; ind.style.transform = `translateX(${bt.offsetLeft}px)`; }
+  });
+}
+
+/* ---------- legenda ---------- */
+const stars = n => { n = Math.max(0, Math.min(5, Math.round(n || 0))); return '★'.repeat(n) + `<i>${'★'.repeat(5 - n)}</i>`; };
+function swapLine(mask, html, dir) {
+  const olds = [...mask.children].filter(e => !e.dataset.leaving);
+  const n = document.createElement('span'); n.innerHTML = html; mask.appendChild(n);
+  if (reduce || !dir) { olds.forEach(o => o.remove()); return; }
+  n.animate([{ transform: `translateY(${dir * 105}%)` }, { transform: 'translateY(0)' }], { duration: 650, easing: E, fill: 'both' });
+  olds.forEach(o => {
+    o.dataset.leaving = 1;
+    const cur = getComputedStyle(o).transform;
+    o.animate([{ transform: cur === 'none' ? 'translateY(0)' : cur }, { transform: `translateY(${-dir * 105}%)` }], { duration: 650, easing: E, fill: 'both' })
+      .onfinish = () => o.remove();
+  });
+}
+function setActive(i, dir) {
+  active = i; const b = LIVROS[i];
+  swapLine($('cTitle'), esc(b.titulo), dir);
+  swapLine($('cSub'), esc(b.autor), dir);
+  swapLine($('cMeta'), [b.ano, b.genero].filter(Boolean).map(esc).join(' · '), dir);
+  placeTabs();
+}
+
+/* ---------- entradas ---------- */
+let suppressClick = false;
+function onTapeClick(t, e) {
+  if (suppressClick) { suppressClick = false; return; }
+  const r = rel(t.v);
+  if (Math.abs(r) < .5) openDetail(); else T = Math.round(T + r);
+}
+const rel = v => mod(v - s + L / 2, L) - L / 2;
+$('prev').addEventListener('click', () => { T = Math.round(T) - 1; });
+$('next').addEventListener('click', () => { T = Math.round(T) + 1; });
+$('play').addEventListener('click', () => openDetail());
+$('close').addEventListener('click', () => closeDetail());
+addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeDetail(); return; }
+  if (isOpen) return;
+  if (e.key === 'ArrowLeft') T = Math.round(T) - 1;
+  else if (e.key === 'ArrowRight') T = Math.round(T) + 1;
+  else if (e.key === 'Enter' && (document.activeElement === document.body || !document.activeElement)) openDetail();
+});
+let wheelTimer = 0;
+addEventListener('wheel', e => {
+  if (isOpen) return;
+  e.preventDefault();
+  const dl = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+  T += dl / (ws + gap) * .5;
+  clearTimeout(wheelTimer); wheelTimer = setTimeout(() => { T = Math.round(T); }, 160);
+}, { passive: false });
+let down = null;
+$('shelf').addEventListener('pointerdown', e => { if (isOpen) return; down = { x: e.clientX, T0: T, id: e.pointerId }; });
+addEventListener('pointermove', e => {
+  mx = e.clientX; my = e.clientY;
+  if (down && e.pointerId === down.id) {
+    const dx = e.clientX - down.x;
+    if (!dragging && Math.abs(dx) > 5) { dragging = true; }
+    if (dragging) T = down.T0 - dx / (ws + gap);
+  }
+});
+function endDrag() {
+  if (dragging) { T = Math.round(T); suppressClick = true; setTimeout(() => { suppressClick = false; }, 0); }
+  dragging = false; down = null;
+}
+addEventListener('pointerup', endDrag);
+addEventListener('pointercancel', endDrag);
+addEventListener('resize', measure);
+
+/* ---------- cursor ---------- */
+const cur = $('cur');
+let overBtn = false, overSpine = false;
+addEventListener('pointerover', e => {
+  const el = e.target instanceof Element ? e.target : null;
+  overBtn = !!(el && el.closest('button, a') && !el.closest('.shelf'));
+  const tp = el && el.closest('.tape');
+  overSpine = !!(tp && tapes.find(t => t.el === tp && Math.abs(rel(t.v)) > .5));
+});
+
+/* ---------- loop ---------- */
+function frame(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  if (reduce) s = T;
+  else { const k = dragging ? 18 : 5.2; s += (T - s) * (1 - Math.exp(-k * dt)); }
+  if (Math.abs(T - s) < 1e-4) s = T;
+  if (Math.abs(s) > 4 * L) { const sh = Math.round(s / L) * L; s -= sh; T -= sh; }
+
+  const a = mod(Math.round(s), N);
+  if (a !== active) setActive(a, Math.sign(T - s) || 1);
+
+  const settled = Math.abs(T - s) < .3;
+  onCover = !isOpen && settled && Math.abs(mx - W / 2) < .55 * d && Math.abs(my - shelfCY) < .55 * H;
+  const tyT = onCover ? (mx - W / 2) / (.55 * d) * 9 : (mx - W / 2) / W * 5;
+  const txT = onCover ? -(my - shelfCY) / (H / 2) * 6 : 0;
+  const kt = 1 - Math.exp(-7 * dt);
+  tiltY += (tyT - tiltY) * kt; tiltX += (txT - tiltX) * kt;
+  const kl = reduce ? 1 : 1 - Math.exp(-12 * dt);
+
+  for (const t of tapes) {
+    const r = rel(t.v), x = F(r);
+    const vis = Math.abs(x) < W / 2 + 1.5 * d;
+    if (vis !== t.vis) { t.el.style.visibility = vis ? '' : 'hidden'; t.vis = vis; }
+    if (!vis) continue;
+    const o = ss(Math.max(0, 1 - Math.abs(r)));
+    const lt = Math.abs(r) > .5 && !isOpen ? t.liftT : 0;
+    t.lift += (lt - t.lift) * kl;
+    const y = -o * .025 * H - t.lift * .045 * H;
+    t.el.style.transform = `translate3d(${x}px,${y}px,${o * .2 * H}px) rotateZ(${-4.5 * o}deg) rotateX(${tiltX * o}deg) rotateY(${-90 * o + tiltY * o}deg)`;
+    t.el.style.zIndex = Math.round(100 - Math.abs(r) * 4);
+    t.sp.style.setProperty('--shade', (o * .55).toFixed(3));
+    t.cv.style.setProperty('--shade', ((1 - o) * .5).toFixed(3));
+  }
+
+  const play = $('play');
+  const ps = isOpen ? 0 : ss(Math.max(0, 1 - Math.abs(T - s) * 3));
+  play.style.left = (W / 2 - .5 * d - 6) + 'px';
+  play.style.top = (shelfCY + .36 * H) + 'px';
+  play.style.transform = `scale(${ps})`;
+
+  const kc = 1 - Math.exp(-16 * dt);
+  cx += (mx - cx) * kc; cy += (my - cy) * kc;
+  cur.style.transform = `translate3d(${cx}px,${cy}px,0)`;
+  cur.classList.toggle('open', onCover && !overBtn);
+  cur.classList.toggle('spine', !isOpen && overSpine && !onCover);
+  cur.classList.toggle('btn', overBtn);
+
+  requestAnimationFrame(frame);
+}
+
+/* ---------- detalhe ---------- */
+const detail = $('detail');
+const BLOBS = [[127,220,0],[287,400,120],[211,80,220],[76,507,300],[338,167,360],[219,573,420],[194,313,180]];
+$('blobs').innerHTML = BLOBS.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="0"/>`).join('');
+const circles = [...$('blobs').children];
+let inkRaf = 0;
+function coverRect() {
+  const v = mod(Math.round(T), L);
+  const t = tapes.find(tt => tt.v === v);
+  const r = t.cv.getBoundingClientRect();
+  // desfaz a caixa envolvente da rotação de 4.5° para achar a capa real
+  const th = 4.5 * Math.PI / 180, c = Math.cos(th), sn = Math.sin(th), c2 = Math.cos(2 * th);
+  let w = (r.width * c - r.height * sn) / c2, h = (r.height * c - r.width * sn) / c2;
+  if (!(w > 0 && h > 0)) { w = r.width; h = r.height; }
+  const mxr = r.left + r.width / 2, myr = r.top + r.height / 2;
+  return { cx: mxr, cy: myr, l: mxr - w / 2, t: myr - h / 2, r: innerWidth - (mxr + w / 2), b: innerHeight - (myr + h / 2) };
+}
+function openDetail() {
+  if (isOpen) return;
+  T = Math.round(T);
+  isOpen = true;
+  const i = mod(T, N), b = LIVROS[i];
+  $('dSub').textContent = b.autor;
+  $('dTitle').textContent = b.titulo;
+  $('dMeta').textContent = [b.ano, b.genero, b.paginas ? b.paginas + ' páginas' : ''].filter(Boolean).join(' / ');
+  $('dStars').innerHTML = stars(b.nota);
+  $('dStars').setAttribute('aria-label', `Nota ${b.nota ?? 0} de 5`);
+  $('dResumo').textContent = b.resumo || '';
+  $('dOpiniao').textContent = b.opiniao || '';
+  $('dCredit').textContent = b.lido ? `Lido em ${b.lido}.` : '';
+  $('pimg').innerHTML = COVERS[i];
+  circles.forEach(c => c.setAttribute('r', 0));
+
+  const R = coverRect();
+  detail.style.visibility = 'visible';
+  detail.scrollTop = 0;
+  detail.style.transformOrigin = `${R.cx}px ${R.cy}px`;
+  detail.getAnimations().forEach(a => a.cancel());
+  detail.animate([
+    { clipPath: `inset(${R.t}px ${R.r}px ${R.b}px ${R.l}px round 3px)`, transform: 'rotate(-4.5deg)' },
+    { clipPath: 'inset(0px 0px 0px 0px round 0px)', transform: 'rotate(0deg)' }
+  ], { duration: reduce ? 1 : 1050, easing: 'cubic-bezier(.76,0,.18,1)', fill: 'both' });
+
+  [...$('dl').querySelectorAll('.r')].forEach((el, k) => {
+    el.getAnimations().forEach(a => a.cancel());
+    el.animate([{ transform: 'translateY(110%)' }, { transform: 'translateY(0)' }],
+      { duration: reduce ? 1 : 900, delay: reduce ? 0 : 620 + k * 75, easing: E, fill: 'both' });
+  });
+
+  cancelAnimationFrame(inkRaf);
+  const start = performance.now() + (reduce ? -5000 : 520);
+  const ink = now => {
+    const el = now - start;
+    BLOBS.forEach(([, , dl], k) => {
+      const p = Math.max(0, Math.min(1, (el - dl) / 1250));
+      circles[k].setAttribute('r', (600 * (1 - Math.pow(1 - p, 3))).toFixed(1));
+    });
+    if (el < 2400) inkRaf = requestAnimationFrame(ink);
+  };
+  inkRaf = requestAnimationFrame(ink);
+  setTimeout(() => $('close').focus({ preventScroll: true }), reduce ? 0 : 900);
+}
+function closeDetail() {
+  if (!isOpen) return;
+  const R = coverRect();
+  detail.style.transformOrigin = `${R.cx}px ${R.cy}px`;
+  const an = detail.animate([
+    { clipPath: 'inset(0px 0px 0px 0px round 0px)', transform: 'rotate(0deg)' },
+    { clipPath: `inset(${R.t}px ${R.r}px ${R.b}px ${R.l}px round 3px)`, transform: 'rotate(-4.5deg)' }
+  ], { duration: reduce ? 1 : 850, easing: 'cubic-bezier(.76,0,.18,1)', fill: 'both' });
+  an.onfinish = () => {
+    detail.style.visibility = 'hidden';
+    detail.getAnimations({ subtree: true }).forEach(a => a.cancel());
+    cancelAnimationFrame(inkRaf);
+    isOpen = false;
+    document.activeElement && document.activeElement.blur();
+  };
+}
+
+measure();
+setActive(mod(Math.round(s), N), 0);
+requestAnimationFrame(frame);
+if (document.fonts) document.fonts.ready.then(() => { measure(); });
+})();
+</script>
+</body>
+</html>
