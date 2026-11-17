@@ -10,7 +10,7 @@ cor: #1F3FB0
 
 ## Resumo
 
-Já velho, Bento Santiago tenta "atar as duas pontas da vida" e reconta tudo: a infância em Matacavalos, o amor por Capitu, o seminário que não quis, o casamento e a suspeita que envenena o resto da história.
+Capitu traiu Bentinho ?
 
 ## O que eu achei
 
