@@ -84,6 +84,7 @@ a{color:inherit;text-decoration:none}
 .arrow{position:fixed;top:calc(50% + var(--H)/2 + 40px);width:44px;height:44px;display:grid;place-items:center;z-index:30}
 .arrow svg{width:18px;height:10px}
 .arrow.prev{left:20px}.arrow.next{right:20px}
+.arrow:disabled{color:rgba(20,20,20,.2);pointer-events:none}
 
 /* footer */
 .foot{position:fixed;left:32px;right:32px;bottom:26px;display:flex;justify-content:space-between;z-index:30}
@@ -280,8 +281,8 @@ function iniciar(lista) {
 const LIVROS = (lista || []).filter(Boolean);
 if (!LIVROS.length) return;
 const N = LIVROS.length;
-const COPIES = Math.max(3, Math.ceil(42 / N));
-const L = COPIES * N;
+const L = N; // cada livro aparece uma vez (sem prateleira infinita)
+const clampT = x => Math.max(0, Math.min(N - 1, x));
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const E = 'cubic-bezier(.2,.8,.2,1)';
 const $ = id => document.getElementById(id);
@@ -371,7 +372,7 @@ const B = r => Math.abs(r) < 1 ? (r + Math.sin(Math.PI * r) / Math.PI) / 2 : Mat
 const F = r => r * (ws + gap) + (d - ws + 1.6 * gap) * B(r);
 
 /* ---------- estado ---------- */
-let s = Math.floor(COPIES / 2) * N, T = s;
+let s = Math.floor((N - 1) / 2), T = s; // começa no livro do meio
 let active = -1, hoverTape = null, dragging = false, isOpen = false, onCover = false;
 let mx = innerWidth / 2, my = innerHeight / 2, cx = mx, cy = my, tiltX = 0, tiltY = 0;
 let last = performance.now();
@@ -383,13 +384,12 @@ const tabBtns = [];
 function mkTab(label, fn) { const bt = document.createElement('button'); bt.textContent = label; bt.addEventListener('click', fn); tabsEl.appendChild(bt); return bt; }
 mkTab('Todos', () => goTo(0));
 genres.forEach(g => tabBtns.push([g, mkTab(g, () => {
-  const cur = mod(Math.round(T), N); let best = null;
+  const cur = Math.round(T); let best = null;
   LIVROS.forEach((b, i) => { if (b.genero !== g) return;
-    let dd = mod(i - cur, N); if (dd > N / 2) dd -= N;
-    if (best === null || Math.abs(dd) < Math.abs(best)) best = dd; });
-  if (best !== null) { T = Math.round(T) + best; }
+    if (best === null || Math.abs(i - cur) < Math.abs(best - cur)) best = i; });
+  if (best !== null) T = best;
 })]));
-function goTo(i) { const cur = mod(Math.round(T), N); let dd = mod(i - cur, N); if (dd > N / 2) dd -= N; T = Math.round(T) + dd; }
+function goTo(i) { T = clampT(i); }
 function placeTabs() {
   const g = active >= 0 ? LIVROS[active].genero : null;
   tabBtns.forEach(([name, bt]) => {
@@ -427,18 +427,18 @@ let suppressClick = false;
 function onTapeClick(t, e) {
   if (suppressClick) { suppressClick = false; return; }
   const r = rel(t.v);
-  if (Math.abs(r) < .5) openDetail(); else T = Math.round(T + r);
+  if (Math.abs(r) < .5) openDetail(); else T = clampT(Math.round(T + r));
 }
-const rel = v => mod(v - s + L / 2, L) - L / 2;
-$('prev').addEventListener('click', () => { T = Math.round(T) - 1; });
-$('next').addEventListener('click', () => { T = Math.round(T) + 1; });
+const rel = v => v - s;
+$('prev').addEventListener('click', () => { T = clampT(Math.round(T) - 1); });
+$('next').addEventListener('click', () => { T = clampT(Math.round(T) + 1); });
 $('play').addEventListener('click', () => openDetail());
 $('close').addEventListener('click', () => closeDetail());
 addEventListener('keydown', e => {
   if (e.key === 'Escape') { closeDetail(); return; }
   if (isOpen) return;
-  if (e.key === 'ArrowLeft') T = Math.round(T) - 1;
-  else if (e.key === 'ArrowRight') T = Math.round(T) + 1;
+  if (e.key === 'ArrowLeft') T = clampT(Math.round(T) - 1);
+  else if (e.key === 'ArrowRight') T = clampT(Math.round(T) + 1);
   else if (e.key === 'Enter' && (document.activeElement === document.body || !document.activeElement)) openDetail();
 });
 let wheelTimer = 0;
@@ -446,8 +446,8 @@ addEventListener('wheel', e => {
   if (isOpen) return;
   e.preventDefault();
   const dl = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-  T += dl / (ws + gap) * .5;
-  clearTimeout(wheelTimer); wheelTimer = setTimeout(() => { T = Math.round(T); }, 160);
+  T = clampT(T + dl / (ws + gap) * .5);
+  clearTimeout(wheelTimer); wheelTimer = setTimeout(() => { T = clampT(Math.round(T)); }, 160);
 }, { passive: false });
 let down = null;
 $('shelf').addEventListener('pointerdown', e => { if (isOpen) return; down = { x: e.clientX, T0: T, id: e.pointerId }; });
@@ -456,11 +456,16 @@ addEventListener('pointermove', e => {
   if (down && e.pointerId === down.id) {
     const dx = e.clientX - down.x;
     if (!dragging && Math.abs(dx) > 5) { dragging = true; }
-    if (dragging) T = down.T0 - dx / (ws + gap);
+    if (dragging) {
+      let raw = down.T0 - dx / (ws + gap);
+      // elástico: além das pontas a prateleira cede só um pouco
+      if (raw < 0) raw *= .3; else if (raw > N - 1) raw = N - 1 + (raw - (N - 1)) * .3;
+      T = raw;
+    }
   }
 });
 function endDrag() {
-  if (dragging) { T = Math.round(T); suppressClick = true; setTimeout(() => { suppressClick = false; }, 0); }
+  if (dragging) { T = clampT(Math.round(T)); suppressClick = true; setTimeout(() => { suppressClick = false; }, 0); }
   dragging = false; down = null;
 }
 addEventListener('pointerup', endDrag);
@@ -483,7 +488,8 @@ function frame(now) {
   if (reduce) s = T;
   else { const k = dragging ? 18 : 5.2; s += (T - s) * (1 - Math.exp(-k * dt)); }
   if (Math.abs(T - s) < 1e-4) s = T;
-  if (Math.abs(s) > 4 * L) { const sh = Math.round(s / L) * L; s -= sh; T -= sh; }
+  $('prev').disabled = Math.round(T) <= 0;
+  $('next').disabled = Math.round(T) >= N - 1;
 
   const a = mod(Math.round(s), N);
   if (a !== active) setActive(a, Math.sign(T - s) || 1);
