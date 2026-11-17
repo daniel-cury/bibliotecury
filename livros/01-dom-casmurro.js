@@ -1,13 +1,12 @@
----
-titulo: "Dom Casmurro"
-autor: "Machado de Assis"
+livro(`
+titulo: Dom Casmurro
+autor: Machado de Assis
 ano: 1899
-genero: "Romance"
+genero: Romance
 paginas: 256
 nota: 5
-lido: "2024"
-cor: "#1F3FB0"
----
+lido: 2024
+cor: #1F3FB0
 
 ## Resumo
 
@@ -15,7 +14,5 @@ Já velho, Bento Santiago tenta "atar as duas pontas da vida" e reconta tudo: a 
 
 ## O que eu achei
 
-Escreva aqui o que você achou deste livro. Pode usar vários parágrafos,
-*itálico*, **negrito**, listas e citações:
-
-> Uma frase marcante do livro.
+Escreva aqui o que você achou deste livro.
+`);
