@@ -26,7 +26,7 @@ listas com "- " no começo da linha e citações com "> ":
   COMO USAR ESTE MODELO
   - Só a primeira linha "livro(`" e a última "`);" são código: não apague.
   - Em cima ficam os dados, um por linha ("campo: valor"), até a primeira linha em branco.
-    titulo, autor, ano, genero (vira aba no topo), paginas, nota (0 a 5), lido (texto livre).
+    titulo, autor, ano, genero (vira aba no topo), paginas, nota (0 a 5, aceita meia estrela: 3.5 ou 3,5), lido (texto livre).
     cor (opcional) é a cor da lombada. capa (opcional) é a URL de uma imagem de capa.
   - Depois da linha em branco vem o seu texto, livre.
   - Não use o caractere ` (crase invertida) dentro do texto.

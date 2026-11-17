@@ -4,7 +4,7 @@ autor: Machado de Assis
 ano: 1899
 genero: Romance
 paginas: 256
-nota: 5
+nota: 4.5
 lido: 2024
 cor: #1F3FB0
 

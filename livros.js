@@ -8,11 +8,7 @@
 */
 LIVROS = [
   "01-dom-casmurro",
-  "02-a-hora-da-estrela",
-  "03-1984",
-  "04-cem-anos-de-solidao",
-  "05-duna",
-  "06-sapiens",
-  "07-o-pequeno-principe",
-  "08-ensaio-sobre-a-cegueira",
+  "02-1984",
+  "03-sapiens",
+  "04-o-pequeno-principe",
 ];
