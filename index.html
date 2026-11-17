@@ -1,3 +1,6 @@
+---
+# Esta página é processada pelo Jekyll (GitHub Pages) para ler os livros de _livros/
+---
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -114,6 +117,16 @@ a{color:inherit;text-decoration:none}
 .d-h{margin-top:8px;display:flex;align-items:center;gap:10px}
 .d-h::after{content:"";flex:1;height:1px;background:var(--rule);opacity:.35}
 .d-p{font-family:var(--serif);font-size:17px;line-height:1.55;max-width:46ch}
+/* texto vindo do Markdown */
+.md h1,.md h2,.md h3,.md h4{font-family:var(--sans);font-weight:600;font-size:10.5px;line-height:1;letter-spacing:.09em;text-transform:uppercase;margin-top:8px;display:flex;align-items:center;gap:10px}
+.md h1::after,.md h2::after,.md h3::after,.md h4::after{content:"";flex:1;height:1px;background:var(--rule);opacity:.35}
+.md p,.md ul,.md ol,.md blockquote{font-family:var(--serif);font-size:17px;line-height:1.55;max-width:46ch}
+.md ul,.md ol{padding-left:1.2em}
+.md li+li{margin-top:.3em}
+.md blockquote{border-left:2px solid var(--cobalt);padding-left:16px;font-style:italic}
+.md a{color:var(--cobalt);text-decoration:underline;text-underline-offset:2px}
+.md hr{border:0;height:1px;background:var(--rule);opacity:.35}
+.md img{max-width:100%;height:auto}
 .d-credit{font-family:var(--serif);font-style:italic;font-size:15px;color:var(--muted)}
 .dr{justify-self:center;align-self:center;height:min(100%,78vh);aspect-ratio:400/600;max-width:100%}
 .dr svg{display:block;width:100%;height:100%;overflow:visible}
@@ -140,7 +153,7 @@ a{color:inherit;text-decoration:none}
 
 <header class="top">
   <a class="l lbl box" href="https://github.com/daniel-cury/bibliotecury" target="_blank" rel="noopener">GitHub</a>
-  <div class="logo" aria-label="bibliotecury"><b>bibliotecury</b><small>Biblioteca pessoal</small></div>
+  <div class="logo" aria-label="bibliotecury"><b>bibliotecury</b><small>Lembrando do que foi lido</small></div>
   <div class="r lbl" id="count"></div>
 </header>
 
@@ -176,16 +189,13 @@ a{color:inherit;text-decoration:none}
 
 <div class="detail" id="detail" role="dialog" aria-modal="true" aria-labelledby="dTitle">
   <button class="close lbl box" id="close">Fechar</button>
-  <div class="dlogo"><div class="logo"><b>bibliotecury</b><small>Biblioteca pessoal</small></div></div>
+  <div class="dlogo"><div class="logo"><b>bibliotecury</b><small>O que eu li e o que eu achei</small></div></div>
   <div class="dl" id="dl">
     <div class="m"><div class="r lbl d-sub" id="dSub"></div></div>
     <div class="m"><h1 class="r d-title" id="dTitle"></h1></div>
     <div class="m"><div class="r lbl d-meta" id="dMeta"></div></div>
     <div class="m"><div class="r d-stars" id="dStars"></div></div>
-    <div class="m"><div class="r lbl d-h">Resumo</div></div>
-    <div class="m"><p class="r d-p" id="dResumo"></p></div>
-    <div class="m"><div class="r lbl d-h">O que eu achei</div></div>
-    <div class="m"><p class="r d-p" id="dOpiniao"></p></div>
+    <div id="dBody" style="display:contents"></div>
     <div class="m"><p class="r d-credit" id="dCredit"></p></div>
   </div>
   <div class="dr" aria-hidden="true">
@@ -207,7 +217,17 @@ a{color:inherit;text-decoration:none}
 
 <div class="cur" id="cur" aria-hidden="true"><div class="ring"></div><div class="dot"></div><div class="txt">ABRIR</div></div>
 
-<script src="livros.js"></script>
+<script>
+/* Gerado pelo Jekyll a partir dos arquivos em _livros/ (ordem = nome do arquivo) */
+window.LIVROS = [
+{% assign livros = site.livros | sort: "path" %}{% for l in livros %}  {
+    titulo: {{ l.titulo | jsonify }}, autor: {{ l.autor | jsonify }}, ano: {{ l.ano | jsonify }},
+    genero: {{ l.genero | jsonify }}, paginas: {{ l.paginas | jsonify }}, nota: {{ l.nota | jsonify }},
+    lido: {{ l.lido | jsonify }}, cor: {{ l.cor | jsonify }}, capa: {{ l.capa | jsonify }},
+    texto: {{ l.content | markdownify | jsonify }}
+  }{% unless forloop.last %},{% endunless %}
+{% endfor %}];
+</script>
 <script>
 (() => {
 const LIVROS = (window.LIVROS || []).filter(Boolean);
@@ -484,8 +504,14 @@ function openDetail() {
   $('dMeta').textContent = [b.ano, b.genero, b.paginas ? b.paginas + ' páginas' : ''].filter(Boolean).join(' / ');
   $('dStars').innerHTML = stars(b.nota);
   $('dStars').setAttribute('aria-label', `Nota ${b.nota ?? 0} de 5`);
-  $('dResumo').textContent = b.resumo || '';
-  $('dOpiniao').textContent = b.opiniao || '';
+  // cada bloco do Markdown (título, parágrafo, lista…) ganha sua própria máscara
+  const body = $('dBody'); body.innerHTML = '';
+  const tmp = document.createElement('div'); tmp.innerHTML = b.texto || '';
+  [...tmp.children].forEach(el => {
+    const m = document.createElement('div'); m.className = 'm md';
+    const r = document.createElement('div'); r.className = 'r';
+    r.appendChild(el); m.appendChild(r); body.appendChild(m);
+  });
   $('dCredit').textContent = b.lido ? `Lido em ${b.lido}.` : '';
   $('pimg').innerHTML = COVERS[i];
   circles.forEach(c => c.setAttribute('r', 0));
