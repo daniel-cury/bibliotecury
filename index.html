@@ -111,8 +111,9 @@ a{color:inherit;text-decoration:none}
 .d-sub{color:var(--cobalt)}
 .d-title{font-family:var(--serif);font-weight:400;font-size:clamp(44px,5.4vw,84px);line-height:1;letter-spacing:-.025em;padding-bottom:.08em}
 .d-meta{color:var(--muted)}
-.d-stars{font-size:18px;letter-spacing:.18em;color:var(--verm)}
-.d-stars i{font-style:normal;color:rgba(20,20,20,.18)}
+.d-stars{font-size:18px;line-height:1.2}
+.d-stars .st{position:relative;display:inline-block;letter-spacing:.18em;white-space:nowrap;color:rgba(20,20,20,.18)}
+.d-stars .st b{position:absolute;left:0;top:0;overflow:hidden;font-weight:inherit;color:var(--verm)}
 .d-h{margin-top:8px;display:flex;align-items:center;gap:10px}
 .d-h::after{content:"";flex:1;height:1px;background:var(--rule);opacity:.35}
 .d-p{font-family:var(--serif);font-size:17px;line-height:1.55;max-width:46ch}
@@ -252,7 +253,7 @@ function lerLivro(texto) {
     let v = m[2].trim();
     if (/^["'].*["']$/.test(v)) v = v.slice(1, -1);
     const k = m[1].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-    b[k] = v === '' ? null : /^\d+(\.\d+)?$/.test(v) ? Number(v) : v;
+    b[k] = v === '' ? null : /^\d+([.,]\d+)?$/.test(v) ? Number(v.replace(',', '.')) : v;
   }
   b.texto = markdown(linhas.slice(i).join('\n'));
   return b;
@@ -398,7 +399,9 @@ function placeTabs() {
 }
 
 /* ---------- legenda ---------- */
-const stars = n => { n = Math.max(0, Math.min(5, Math.round(n || 0))); return '★'.repeat(n) + `<i>${'★'.repeat(5 - n)}</i>`; };
+// nota de 0 a 5, em passos de meia estrela (3.5 ou 3,5)
+const notaArred = n => Math.max(0, Math.min(5, Math.round((Number(n) || 0) * 2) / 2));
+const stars = n => `<span class="st">★★★★★<b style="width:${notaArred(n) / 5 * 100}%">★★★★★</b></span>`;
 function swapLine(mask, html, dir) {
   const olds = [...mask.children].filter(e => !e.dataset.leaving);
   const n = document.createElement('span'); n.innerHTML = html; mask.appendChild(n);
@@ -550,7 +553,7 @@ function openDetail() {
   $('dTitle').textContent = b.titulo;
   $('dMeta').textContent = [b.ano, b.genero, b.paginas ? b.paginas + ' páginas' : ''].filter(Boolean).join(' / ');
   $('dStars').innerHTML = stars(b.nota);
-  $('dStars').setAttribute('aria-label', `Nota ${b.nota ?? 0} de 5`);
+  $('dStars').setAttribute('aria-label', `Nota ${String(notaArred(b.nota)).replace('.', ',')} de 5`);
   // cada bloco do Markdown (título, parágrafo, lista…) ganha sua própria máscara
   const body = $('dBody'); body.innerHTML = '';
   const tmp = document.createElement('div'); tmp.innerHTML = b.texto || '';
