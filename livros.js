@@ -11,4 +11,5 @@ LIVROS = [
   "02-1984",
   "03-sapiens",
   "04-o-pequeno-principe",
+  "05-long-walk-to-freedom",
 ];

@@ -10,7 +10,7 @@ cor: #141414
 
 ## Resumo
 
-Em Oceania, o Partido vigia tudo e reescreve o passado todos os dias. Winston Smith trabalha falsificando registros, até que começa um diário, e um romance, que são crimes.
+Mundo do big brother
 
 ## O que eu achei
 
