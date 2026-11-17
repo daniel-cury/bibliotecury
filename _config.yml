@@ -1,0 +1,7 @@
+title: bibliotecury
+markdown: kramdown
+collections:
+  livros:
+    output: false
+exclude:
+  - README.md
