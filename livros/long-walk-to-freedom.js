@@ -14,10 +14,7 @@ Livro escrito por Nelson Mandela sobre sua vida enquanto ele estava preso.
 
 ## O que eu achei
 
-Sua opinião aqui. Separe parágrafos com uma linha em branco.
+> I might not be in jail anymore, but I'm not a free man.
 
-Dá para usar *itálico*, **negrito**, [links](https://exemplo.com),
-listas com "- " no começo da linha e citações com "> ":
-
-> Uma frase marcante do livro.
+Livro bão.
 `);
