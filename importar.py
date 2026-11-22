@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-bibliotecury: importa livros a partir de arquivos EPUB e PDF.
+bibliotecury: importa livros a partir de arquivos EPUB, PDF e do Kindle (KFX, AZW, AZW3, MOBI).
+Os do Kindle precisam do Calibre instalado (calibre-ebook.com).
 
 Para cada arquivo encontrado, cria livros/<nome-do-livro>.js com título, autor,
 ano, gênero, páginas, capa e resumo (quando o arquivo traz essas informações),
@@ -33,6 +34,7 @@ LIVROS = RAIZ / 'livros'
 CAPAS = RAIZ / 'capas'
 LISTA = RAIZ / 'livros.js'
 PADRAO = RAIZ / 'leituras'
+REGISTRO = PADRAO / '.importados'  # arquivos já importados (um nome por linha); não vão para o GitHub
 
 PALETA = ['#1F3FB0', '#D9472B', '#141414', '#2F6B4F', '#C98A1B', '#7A2E3A',
           '#3D6FB6', '#0B0964', '#300202', '#23BDA8', '#5B3A7A', '#8A5A2E']
@@ -90,7 +92,8 @@ def resumo_limpo(texto):
 
 def nome_autor(texto):
     """'Kafka, Franz' ou 'Bradbury,Ray' vira 'Franz Kafka' / 'Ray Bradbury'."""
-    t = limpo(texto)
+    t = limpo(re.sub(r'\([^)]*\)', '', texto or ''))          # tira "(research Fellow)" e afins
+    t = re.sub(r'\s+(and|e|&|y|et)\s+', ', ', t)                # "A and B" vira "A, B"
     partes = [p.strip() for p in t.split(',')]
     if len(partes) == 2 and ' ' not in partes[0] and partes[1]:
         return f'{partes[1]} {partes[0]}'
@@ -201,25 +204,179 @@ def ler_pdf(caminho):
     return info
 
 
+# ---------- Kindle (KFX, AZW, AZW3, MOBI) via Calibre ----------
+# Formatos da Amazon são fechados; quem lê os dados deles é o "ebook-meta", que vem com o Calibre.
+# Só lemos título, autor, data, gênero, sinopse e capa: nada de mexer em DRM.
+
+KINDLE = ('.kfx', '.azw', '.azw3', '.azw8', '.mobi', '.prc')
+
+
+def ebook_meta():
+    for cmd in ('ebook-meta', '/opt/calibre/ebook-meta', '/usr/bin/ebook-meta'):
+        if shutil.which(cmd):
+            return [shutil.which(cmd)]
+    if shutil.which('flatpak') and subprocess.run(['flatpak', 'info', 'com.calibre_ebook.calibre'],
+                                                  capture_output=True).returncode == 0:
+        return ['flatpak', 'run', '--command=ebook-meta', '--filesystem=host', 'com.calibre_ebook.calibre']
+    return None
+
+
+def titulo_do_arquivo(caminho):
+    """"Can't Hurt Me_ Master Your Mind_B07H453KGH.kfx" -> "Can't Hurt Me: Master Your Mind"."""
+    t = re.sub(r'[_ ]+B0[0-9A-Z]{8}$', '', caminho.stem)      # tira o código da Amazon (ASIN)
+    t = re.sub(r'_\s', ': ', t, count=1).replace('_', ' ')
+    return limpo(t)
+
+
+def calibre_meta(cmd, caminho):
+    """Lê os dados com o ebook-meta. Devolve {} se o arquivo não tiver nada legível (ex.: DRM)."""
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        capa = Path(tmp) / 'capa.jpg'
+        r = subprocess.run(cmd + [str(caminho), f'--get-cover={capa}'], capture_output=True, text=True, timeout=180)
+        # saída no formato "Title               : Nome", com "Comments" podendo ocupar várias linhas
+        campos, chave = {}, None
+        for linha in r.stdout.splitlines():
+            m = re.match(r'^([A-Za-z() ]+?)\s*:\s(.*)$', linha)
+            if m:
+                chave = m.group(1).strip(); campos[chave] = m.group(2).strip()
+            elif chave == 'Comments':
+                campos[chave] += '\n' + linha
+        autores = [nome_autor(re.sub(r'\[.*?\]', '', a)) for a in campos.get('Author(s)', '').split('&') if a.strip()]
+        if not autores or autores == ['Unknown']:
+            return {}  # o Calibre só repetiu o nome do arquivo: não leu nada de verdade
+        info = {
+            'titulo': limpo(campos.get('Title', '')),
+            'autor': ', '.join(autores),
+            'genero': limpo(campos.get('Tags', '').split(',')[0]),
+            'resumo': resumo_limpo(campos.get('Comments', '')),
+        }
+        m = re.search(r'\d{4}', campos.get('Published', ''))
+        info['ano'] = m.group(0) if m and not m.group(0).startswith('01') else ''
+        if capa.exists() and capa.stat().st_size:
+            info['capa_dados'] = capa.read_bytes()
+        return info
+
+
+def baixar(url):
+    import urllib.request
+    req = urllib.request.Request(url, headers={'User-Agent': 'bibliotecury-importar/1.0'})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return r.read()
+
+
+def open_library(titulo):
+    """Procura o livro pelo título no catálogo público da Open Library."""
+    import json
+    import urllib.parse
+    campos = 'title,author_name,first_publish_year,subject,cover_i,number_of_pages_median'
+    doc = None
+    # tenta o título inteiro e, se não achar, só a parte antes do subtítulo ("Can't Hurt Me: Master..." -> "Can't Hurt Me")
+    for t in dict.fromkeys([titulo, titulo.split(':')[0].strip()]):
+        url = 'https://openlibrary.org/search.json?' + urllib.parse.urlencode({'title': t, 'limit': 5, 'fields': campos})
+        docs = json.loads(baixar(url)).get('docs', [])
+        # pula "resumos" e similares que aparecem junto com o livro de verdade
+        doc = next((d for d in docs if d.get('author_name')
+                    and not re.search(r'summary|resumo|workbook|study guide', ' '.join(d['author_name']) + ' ' + d.get('title', ''), re.I)), None)
+        if doc:
+            break
+    if not doc:
+        return {}
+    info = {
+        'autor': ', '.join(nome_autor(a) for a in doc['author_name'][:2]),
+        'ano': str(doc.get('first_publish_year') or ''),
+        'paginas': str(doc.get('number_of_pages_median') or ''),
+        'genero': next((g for g in map(genero_canonico, doc.get('subject', [])) if g), ''),
+    }
+    if doc.get('cover_i'):
+        try:
+            info['capa_dados'] = baixar(f"https://covers.openlibrary.org/b/id/{doc['cover_i']}-L.jpg")
+        except Exception:
+            pass
+    return info
+
+
+def ler_kindle(caminho):
+    info = {}
+    cmd = ebook_meta()
+    if cmd:
+        try:
+            info = calibre_meta(cmd, caminho)
+        except Exception:
+            info = {}
+    if not info:
+        # arquivo com DRM (ou sem Calibre): usa o título do nome do arquivo e completa pela Open Library
+        info = {'titulo': titulo_do_arquivo(caminho)}
+        try:
+            achado = open_library(info['titulo'])
+        except Exception as e:
+            achado = {}
+            print(f'    não consegui consultar a Open Library ({e})')
+        if achado:
+            print('    arquivo com DRM: dados completados pela Open Library, confira')
+        else:
+            print('    arquivo com DRM e livro não achado na Open Library: só o título foi preenchido')
+        info.update(achado)
+    return info
+
+
 # ---------- gravação ----------
 
+def _lista_livros(texto):
+    """Posição (início, fim) do conteúdo entre os colchetes de LIVROS = [ ... ] em livros.js."""
+    ini = texto.index('[', texto.index('LIVROS'))
+    return ini + 1, texto.index(']', ini)
+
+
 def nomes_na_lista():
-    return re.findall(r'"([^"]+)"', LISTA.read_text(encoding='utf-8').split('LIVROS', 1)[1])
+    texto = LISTA.read_text(encoding='utf-8')
+    ini, fim = _lista_livros(texto)
+    return re.findall(r'"([^"]+)"', texto[ini:fim])
 
 
 def adicionar_na_lista(nome):
     texto = LISTA.read_text(encoding='utf-8')
-    fim = texto.rindex(']')
+    ini, fim = _lista_livros(texto)
     antes = texto[:fim].rstrip()
     if not antes.endswith(('[', ',')):
         antes += ','
     LISTA.write_text(f'{antes}\n  "{nome}",\n{texto[fim:]}', encoding='utf-8')
 
 
+def parecido_com_existente(nome):
+    """Acha um livro já cadastrado com o mesmo título, ex.: "1954-ray-bradbury-fahrenheit-451" ~ "fahrenheit-451"."""
+    for f in LIVROS.glob('*.js'):
+        if f.stem.startswith('_'):
+            continue
+        m = re.search(r'^titulo:\s*(.+)$', f.read_text(encoding='utf-8'), re.M)
+        existente = slug(m.group(1)) if m else f.stem
+        for e in {existente, f.stem}:
+            if len(e) >= 6 and (f'-{e}-' in f'-{nome}-' or f'-{nome}-' in f'-{e}-'):
+                return f.name
+    return None
+
+
+def registrados():
+    try:
+        return set(REGISTRO.read_text(encoding='utf-8').splitlines())
+    except FileNotFoundError:
+        return set()
+
+
+def registrar(caminho):
+    with REGISTRO.open('a', encoding='utf-8') as f:
+        f.write(caminho.name + '\n')
+
+
 def importar(caminho):
+    if caminho.name in registrados():
+        return False  # já importado antes (mesmo que você tenha renomeado ou apagado o .js)
     ext = caminho.suffix.lower()
     try:
-        info = ler_epub(caminho) if ext == '.epub' else ler_pdf(caminho)
+        info = ler_epub(caminho) if ext == '.epub' else ler_kindle(caminho) if ext in KINDLE else ler_pdf(caminho)
+    except RuntimeError as e:  # erro definitivo (ex.: falta o Calibre): não adianta tentar de novo
+        print(f'  ✗ {caminho.name}: {e}')
+        return False
     except Exception as e:
         print(f'  ✗ {caminho.name}: não consegui ler ({e})')
         return None  # tenta de novo na próxima volta (pode estar sendo copiado)
@@ -229,6 +386,12 @@ def importar(caminho):
     nome = slug(info['titulo'])
     if (LIVROS / f'{nome}.js').exists() or nome in nomes_na_lista():
         print(f'  · {caminho.name}: já existe (livros/{nome}.js), pulei')
+        registrar(caminho)
+        return False
+    igual = parecido_com_existente(nome)
+    if igual:
+        print(f'  · {caminho.name}: parece ser o mesmo livro de livros/{igual}, pulei')
+        registrar(caminho)
         return False
 
     bruto = info.get('genero', '')
@@ -263,6 +426,7 @@ Escreva aqui o que você achou deste livro.
 """
     (LIVROS / f'{nome}.js').write_text(js, encoding='utf-8')
     adicionar_na_lista(nome)
+    registrar(caminho)
     print(f'  ✓ {caminho.name} → livros/{nome}.js' + ('' if capa else ' (sem capa)'))
     return True
 
@@ -273,7 +437,7 @@ def arquivos(alvos):
         if alvo.is_file():
             yield alvo
         elif alvo.is_dir():
-            yield from sorted(p for p in alvo.rglob('*') if p.suffix.lower() in ('.epub', '.pdf'))
+            yield from sorted(p for p in alvo.rglob('*') if p.suffix.lower() in ('.epub', '.pdf') + KINDLE)
         else:
             print(f'Não encontrei: {alvo}')
 
@@ -302,7 +466,7 @@ def main():
 
 if __name__ == '__main__':
     if '--vigiar' in sys.argv:
-        print('De olho na pasta. Solte um EPUB ou PDF nela; Ctrl+C para parar.')
+        print('De olho na pasta. Solte um EPUB, PDF ou arquivo do Kindle nela; Ctrl+C para parar.')
     try:
         main()
     except KeyboardInterrupt:

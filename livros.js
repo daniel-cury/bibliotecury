@@ -8,7 +8,8 @@
 
   A prateleira fica agrupada por gênero, na ordem de GENEROS (lá embaixo).
   Use no campo "genero" de cada livro um destes nomes, escrito igual.
-  Dentro de cada gênero, os livros seguem a ordem desta lista.
+  Dentro de cada gênero, os livros ficam em ordem alfabética pelo sobrenome do autor
+  (então a ordem desta lista não importa).
 */
 LIVROS = [
   "dom-casmurro",
@@ -33,7 +34,16 @@ LIVROS = [
   "the-mamba-mentality",
   "vagabonding",
   "walking-to-aldebaran",
-  "reader-dvi",
+  "wireless-communications",
+  "a-lua-vem-da-asia",
+  "le-monde-en-stop",
+  "steve-jobs",
+  "can-t-hurt-me-master-your-mind-and-defy-the-odds",
+  "digital-minimalism-choosing-a-focused-life-in-a-noisy-world",
+  "fiodor-dostoievski-crime-e-castigo-portuguese-edition",
+  "headhunter-nesbo-jo-321c831ec35d3510ca9aec0a2a4aea49-annas-a",
+  "helena-literatura-classica-brasileira-portuguese-edition",
+  "prisoners-of-geography-ten-maps-that-tell-you-everything-tim",
 ];
 
 GENEROS = [
@@ -42,6 +52,8 @@ GENEROS = [
   "Biografia",
   "Viagem",
   "História",
+  "Suspense policial",
   "Economia e negócios",
+  "Desenvolvimento pessoal",
   "Acadêmico",
 ];

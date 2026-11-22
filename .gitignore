@@ -1,2 +1,3 @@
 leituras/*
 !leituras/LEIA-ME.txt
+__pycache__/

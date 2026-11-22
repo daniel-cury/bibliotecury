@@ -320,9 +320,11 @@ function carregarLivros() {
 function iniciar(lista) {
 const ORDEM = (window.GENEROS || []).map(g => String(g).toLowerCase());
 const posGen = b => { const k = ORDEM.indexOf(String(b.genero || '').toLowerCase()); return k < 0 ? ORDEM.length : k; };
-// agrupa por gênero, na ordem de GENEROS (livros.js); dentro do gênero, mantém a ordem da lista
-const LIVROS = (lista || []).filter(Boolean).map((b, k) => [b, k])
-  .sort((a, c) => posGen(a[0]) - posGen(c[0]) || a[1] - c[1]).map(a => a[0]);
+// agrupa por gênero, na ordem de GENEROS (livros.js); dentro do gênero, pelo sobrenome do (primeiro) autor
+const sobrenome = b => String(b.autor || '').split(',')[0].trim().split(/\s+/).pop() || '';
+const alfa = (x, y) => x.localeCompare(y, 'pt', { sensitivity: 'base', numeric: true });
+const LIVROS = (lista || []).filter(Boolean)
+  .sort((a, c) => posGen(a) - posGen(c) || alfa(sobrenome(a), sobrenome(c)) || alfa(String(a.titulo), String(c.titulo)));
 if (!LIVROS.length) return;
 const N = LIVROS.length;
 const L = N; // cada livro aparece uma vez (sem prateleira infinita)

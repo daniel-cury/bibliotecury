@@ -1,6 +1,6 @@
 livro(`
 titulo: ECONOMICS THIRD EDITION
-autor: Paul Krugman and Robin Wells
+autor: Paul Krugman, Robin Wells
 ano: 2012
 genero: Economia e negócios
 paginas: 1157

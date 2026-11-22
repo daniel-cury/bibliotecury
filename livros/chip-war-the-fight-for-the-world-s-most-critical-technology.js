@@ -1,6 +1,6 @@
 livro(`
 titulo: Chip War: The Fight for the World's Most Critical Technology
-autor: Chris Miller (research Fellow)
+autor: Chris Miller
 ano: 2022
 genero: Economia e negócios
 paginas: 467
