@@ -72,7 +72,7 @@ a{color:inherit;text-decoration:none}
 .play svg{width:12px;height:12px;margin-left:2px}
 
 /* caption */
-.cap{position:fixed;left:0;right:0;top:calc(50% + var(--H)/2 + 30px);display:flex;flex-direction:column;align-items:center;gap:9px;pointer-events:none;z-index:20}
+.cap{position:fixed;left:0;right:0;top:calc(50% + var(--H)/2 + 48px);display:flex;flex-direction:column;align-items:center;gap:9px;pointer-events:none;z-index:20}
 .mask{position:relative;overflow:hidden;width:min(92vw,760px);text-align:center}
 .mask>span{display:block}
 .mask>span+span{position:absolute;left:0;right:0;top:0}
@@ -81,10 +81,19 @@ a{color:inherit;text-decoration:none}
 .c-meta{font-family:var(--sans);font-weight:500;font-size:11px;letter-spacing:.08em}
 
 /* arrows */
-.arrow{position:fixed;top:calc(50% + var(--H)/2 + 40px);width:44px;height:44px;display:grid;place-items:center;z-index:30}
+.arrow{position:fixed;top:calc(50% + var(--H)/2 + 58px);width:44px;height:44px;display:grid;place-items:center;z-index:30}
 .arrow svg{width:18px;height:10px}
 .arrow.prev{left:20px}.arrow.next{right:20px}
 .arrow:disabled{color:rgba(20,20,20,.2);pointer-events:none}
+
+/* tábua de madeira sob os livros */
+.plank{position:fixed;left:0;right:0;top:calc(50% + var(--H)/2 - 7px);height:30px;z-index:9;pointer-events:none;
+  filter:drop-shadow(0 16px 14px rgba(40,24,10,.30))}
+.plank svg{display:block;width:100%;height:100%}
+
+/* samambaia no canto esquerdo da prateleira */
+.fern{position:fixed;left:-6px;width:calc(var(--H) * 1.08);height:calc(var(--H) * 2.16);
+  top:calc(50% + var(--H)/2 + 3px - var(--H) * .72);z-index:25;pointer-events:none;overflow:visible}
 
 /* footer */
 .foot{position:fixed;left:32px;right:32px;bottom:26px;display:flex;justify-content:space-between;z-index:30}
@@ -163,6 +172,33 @@ a{color:inherit;text-decoration:none}
 <section class="shelf" id="shelf" aria-label="Prateleira de livros">
   <div class="stage" id="stage"></div>
 </section>
+<div class="plank" aria-hidden="true">
+  <svg>
+    <defs>
+      <filter id="veio" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency=".0028 .16" numOctaves="4" seed="7"/>
+        <feColorMatrix values="0 0 0 0 .24  0 0 0 0 .12  0 0 0 0 .04  1.6 0 0 0 -.35"/>
+        <feComponentTransfer><feFuncA type="table" tableValues="0 .55 .1 .7 0 .5 .15 .65 0"/></feComponentTransfer>
+      </filter>
+      <filter id="poros" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency=".6 .03" numOctaves="2" seed="3"/>
+        <feColorMatrix values="0 0 0 0 .2  0 0 0 0 .1  0 0 0 0 .03  0 0 0 -.9 .55"/>
+      </filter>
+      <linearGradient id="tampo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#C69563"/><stop offset="1" stop-color="#B07C48"/></linearGradient>
+      <linearGradient id="frente" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#A06C3B"/><stop offset=".7" stop-color="#8A5A2E"/><stop offset="1" stop-color="#6A4220"/></linearGradient>
+      <linearGradient id="luz" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#000" stop-opacity=".18"/><stop offset=".35" stop-color="#fff" stop-opacity=".06"/><stop offset=".7" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".2"/></linearGradient>
+    </defs>
+    <rect width="100%" height="10" fill="url(#tampo)"/>
+    <rect width="100%" height="10" filter="url(#veio)" opacity=".7"/>
+    <rect y="10" width="100%" height="20" fill="url(#frente)"/>
+    <rect y="10" width="100%" height="20" filter="url(#veio)"/>
+    <rect y="10" width="100%" height="20" filter="url(#poros)" opacity=".5"/>
+    <rect width="100%" height="30" fill="url(#luz)"/>
+    <rect y="9.5" width="100%" height="1" fill="#F3D3A6" opacity=".55"/>
+    <rect y="28.5" width="100%" height="1.5" fill="#3E2410" opacity=".6"/>
+  </svg>
+</div>
+<svg class="fern" id="fern" viewBox="0 0 360 720" aria-hidden="true"></svg>
 
 <button class="play" id="play" aria-label="Abrir livro">
   <svg viewBox="0 0 12 12"><path d="M1 0 L12 6 L1 12 Z" fill="currentColor"/></svg>
@@ -334,6 +370,69 @@ function coverInner(b, i) {
 const COVERS = LIVROS.map(coverInner);
 LIVROS.forEach(b => { if (b.capa) { const im = new Image(); im.src = b.capa; } });
 
+/* ---------- samambaia ---------- */
+(function fern() {
+  let seed = 11;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const f = n => n.toFixed(1);
+  // um ramo: curva cúbica do vaso até a ponta, com folíolos dos dois lados
+  function frond([x0, y0], [x1, y1], [x2, y2], [x3, y3], maxL, n, cor, haste) {
+    const P = t => { const u = 1 - t; return [u*u*u*x0 + 3*u*u*t*x1 + 3*u*t*t*x2 + t*t*t*x3, u*u*u*y0 + 3*u*u*t*y1 + 3*u*t*t*y2 + t*t*t*y3]; };
+    const D = t => { const u = 1 - t; return [3*u*u*(x1-x0) + 6*u*t*(x2-x1) + 3*t*t*(x3-x2), 3*u*u*(y1-y0) + 6*u*t*(y2-y1) + 3*t*t*(y3-y2)]; };
+    let d = '';
+    for (let k = 0; k < n; k++) {
+      const t = .1 + .88 * k / (n - 1);
+      const [px, py] = P(t); let [tx, ty] = D(t); const m = Math.hypot(tx, ty); tx /= m; ty /= m;
+      const L = maxL * Math.pow(1 - t, .55) * Math.min(1, (t - .05) * 4) * (.85 + .3 * rnd());
+      for (const sd of [-1, 1]) {
+        const nx = -ty * sd, ny = tx * sd, a = .95;
+        let dx = Math.cos(a) * tx + Math.sin(a) * nx, dy = Math.cos(a) * ty + Math.sin(a) * ny + .35;
+        const dm = Math.hypot(dx, dy); dx /= dm; dy /= dm;
+        const ex = px + dx * L, ey = py + dy * L, w = L * .2;
+        const mx = px + dx * L * .45, my = py + dy * L * .45, qx = -dy * w, qy = dx * w;
+        d += `M${f(px)} ${f(py)}Q${f(mx+qx)} ${f(my+qy)} ${f(ex)} ${f(ey)}Q${f(mx-qx)} ${f(my-qy)} ${f(px)} ${f(py)}Z`;
+      }
+    }
+    return `<g>
+      <path d="M${x0} ${y0}C${x1} ${y1} ${x2} ${y2} ${x3} ${y3}" fill="none" stroke="${haste}" stroke-width="1.6" stroke-linecap="round"/>
+      <path d="${d}" fill="${cor}"/></g>`;
+  }
+  const atras = [
+    [[108,150],[92,70],[40,20],[-4,36], 26, 38, '#3E6A2C', '#355A24'],
+    [[114,150],[140,60],[210,40],[262,84], 26, 38, '#3E6A2C', '#355A24'],
+    [[118,150],[180,80],[290,110],[318,250], 28, 42, '#477733', '#3A6026'],
+    [[104,150],[60,96],[0,110],[-20,210], 24, 36, '#477733', '#3A6026'],
+    [[110,150],[118,60],[130,10],[160,-10], 24, 34, '#3A6229', '#325622'],
+    [[112,150],[160,70],[250,60],[300,150], 26, 40, '#42702F', '#375C25'],
+    [[106,150],[70,60],[10,60],[-16,120], 24, 36, '#42702F', '#375C25'],
+  ];
+  const frente = [
+    [[100,150],[56,118],[8,176],[16,340], 26, 42, '#5A8E3A', '#476F2A'],
+    [[112,150],[150,124],[204,210],[176,430], 28, 48, '#66993F', '#4F7A2E'],
+    [[106,150],[78,150],[74,310],[56,560], 28, 54, '#5A8E3A', '#476F2A'],
+    [[116,150],[176,140],[250,290],[236,500], 27, 50, '#4F8234', '#41692A'],
+    [[110,150],[128,178],[124,420],[92,700], 26, 62, '#6CA043', '#557F32'],
+    [[102,150],[40,150],[-2,262],[-6,430], 25, 46, '#4F8234', '#41692A'],
+    [[114,150],[150,104],[226,120],[262,230], 24, 38, '#72A84A', '#5A8636'],
+    [[108,150],[100,96],[70,70],[36,92], 20, 30, '#72A84A', '#5A8636'],
+    [[104,150],[30,120],[-10,200],[-24,300], 24, 40, '#5F9440', '#4A732D'],
+    [[114,150],[200,120],[290,200],[296,360], 26, 46, '#5F9440', '#4A732D'],
+    [[108,150],[96,190],[30,330],[24,620], 26, 56, '#63973F', '#4D762E'],
+    [[112,150],[160,180],[190,330],[150,600], 26, 54, '#548A37', '#44702A'],
+    [[110,150],[120,110],[170,90],[200,130], 18, 26, '#78AE50', '#5E8B38'],
+    [[106,150],[90,120],[50,120],[40,170], 18, 24, '#78AE50', '#5E8B38'],
+  ];
+  const vaso = `<defs>
+      <linearGradient id="barro" x1="0" x2="1"><stop offset="0" stop-color="#8E4A2C"/><stop offset=".4" stop-color="#C7714A"/><stop offset=".65" stop-color="#B5603C"/><stop offset="1" stop-color="#7A3D22"/></linearGradient>
+    </defs>
+    <ellipse cx="110" cy="152" rx="50" ry="7" fill="#3A2716"/>
+    <path d="M62 160 L158 160 L148 240 L72 240 Z" fill="url(#barro)"/>
+    <rect x="55" y="146" width="110" height="18" rx="3" fill="url(#barro)"/>
+    <rect x="55" y="162" width="110" height="3" fill="#000" opacity=".18"/>
+    <ellipse cx="110" cy="241" rx="40" ry="3" fill="#000" opacity=".25"/>`;
+  $('fern').innerHTML = atras.map(a => frond(...a)).join('') + vaso + frente.map(a => frond(...a)).join('');
+})();
+
 /* ---------- monta prateleira ---------- */
 const stage = $('stage');
 const tapes = [];
@@ -342,7 +441,7 @@ for (let v = 0; v < L; v++) {
   const i = v % N, b = LIVROS[i];
   const el = document.createElement('div');
   el.className = 'tape';
-  el.innerHTML = `<div class="face sp" style="--c:${esc(b.cor)}"><span class="mk"></span><span class="t">${esc(b.titulo)}</span><span class="a">${esc(surname(b.autor))}</span><b class="n">${String(i + 1).padStart(2, '0')}</b></div>
+  el.innerHTML = `<div class="face sp" style="--c:${esc(b.cor)}${b.letra ? ';color:' + esc(b.letra) : ''}"><span class="mk"></span><span class="t">${esc(b.titulo)}</span><span class="a">${esc(surname(b.autor))}</span><b class="n">${String(i + 1).padStart(2, '0')}</b></div>
     <div class="face bk" style="--c:${esc(b.cor)}"></div>
     <div class="face cv"><svg viewBox="0 0 400 600" preserveAspectRatio="none">${COVERS[i]}</svg></div>`;
   const t = { el, v, i, sp: el.children[0], cv: el.children[2], lift: 0, liftT: 0, vis: true };
