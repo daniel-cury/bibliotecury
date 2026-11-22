@@ -1,14 +1,14 @@
 livro(`
-titulo: Long walk to freedom
+titulo: The Long Walk to Freedom
 autor: Nelson Mandela
 ano: 1994
 genero: Biografia
-paginas: 556
-nota: 4
+paginas: 906
+nota: 4.5
 lido: Novembro de 2026
 cor: #4a504f
 letra: #F1E9D6
-capa: https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSV71Ld6gEg20wU8-1F4zYqJH2PQa3CUab_vbzAL8qh2Q&s=10
+capa: capas/the-long-walk-to-freedom.jpg
 
 ## Resumo
 

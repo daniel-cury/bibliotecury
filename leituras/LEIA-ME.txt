@@ -1,0 +1,3 @@
+Arquivos EPUB e PDF de leituras, rodar com importar.py que automaticamente gera o livro na lista:
+Esta pasta não vai para o GitHub.
+Página importante, pq se a pasta tivesse vazia, o github não guardaria. E como ele ignora os arquivos epub, tem que ter alguma coisa

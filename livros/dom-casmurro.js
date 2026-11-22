@@ -2,7 +2,7 @@ livro(`
 titulo: Dom Casmurro
 autor: Machado de Assis
 ano: 1899
-genero: Romance
+genero: Literatura
 paginas: 256
 nota: 4.5
 lido: 2024

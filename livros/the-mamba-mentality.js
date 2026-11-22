@@ -1,0 +1,24 @@
+livro(`
+titulo: The Mamba Mentality
+autor: Kobe Bryant
+ano: 2018
+genero: Biografia
+paginas: 90
+nota: 5
+lido: 2024
+cor: #5B3A7A
+letra: #F1E9D6
+capa: capas/the-mamba-mentality.jpg
+
+## Resumo
+
+In the wake of his retirement from professional basketball, Kobe “The Black Mamba” Bryant has decided to share his vast knowledge and understanding of the game to take readers on an unprecedented journey to the core of the legendary “Mamba mentality.” Citing an obligation and an opportunity to teach young players, hardcore fans, and devoted students of the game how to play it “the right way,” The Mamba Mentality takes us inside the mind of one of the most intelligent, analytical, and creative basketball players ever.
+
+For the first time, and in his own words, Bryant reveals his famously detailed approach and the steps he took to prepare mentally and physically to not just succeed at the game, but to excel. Readers will learn how Bryant studied an opponent, how he channeled his passion for the game, how he played through injuries. They’ll also get fascinating granular detail as he breaks down specific plays and match-ups from throughout his career.
+
+Bryant’s detailed accounts are paired with stunning photographs by the Hall of Fame photographer Andrew D. Bernstein. Bernstein, long the Lakers and NBA official photographer, captured Bryant’s very first NBA photo in 1996 and his last in 2016—and hundreds of thousands in between, the record of a unique, twenty-year relationship between one athlete and one photographer.
+
+## O que eu achei
+
+Escreva aqui o que você achou deste livro.
+`);
