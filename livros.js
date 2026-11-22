@@ -44,6 +44,9 @@ LIVROS = [
   "headhunter-nesbo-jo-321c831ec35d3510ca9aec0a2a4aea49-annas-a",
   "helena-literatura-classica-brasileira-portuguese-edition",
   "prisoners-of-geography-ten-maps-that-tell-you-everything-tim",
+  "a-volta-ao-mundo-em-80-dias-portuguese-edition",
+  "the-caves-of-steel-isaac-asimov-1953-a0714e47cec79e7047e4403",
+  "the-world-for-sale-money-power-and-the-traders-who-barter-fa",
 ];
 
 GENEROS = [
