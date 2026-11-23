@@ -1,7 +1,7 @@
 livro(`
 titulo: Diarios de motocicleta
 autor: Ernesto Che Guevara
-ano: 2021
+ano: 1993
 genero: Viagem
 paginas: 170
 nota: 3.5

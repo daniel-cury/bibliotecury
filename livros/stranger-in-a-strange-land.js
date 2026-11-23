@@ -1,7 +1,7 @@
 livro(`
 titulo: Stranger in a Strange Land
 autor: Robert A. Heinlein
-ano: 2011
+ano: 1961
 genero: Ficção científica
 paginas: 780
 nota: 3.5
