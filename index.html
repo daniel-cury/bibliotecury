@@ -49,6 +49,7 @@ a{color:inherit;text-decoration:none}
   transition:color .45s var(--ease),background-color .45s var(--ease)}
 .tabs button.on{color:#fff}
 .tabs .todos.on{background:var(--cobalt)}
+.tabs .cnt{display:none;font-size:10px;line-height:12px;color:var(--muted)}
 .tabs .gen{position:relative;display:flex;max-width:min(980px,calc(100% - 64px));overflow-x:auto;overflow-y:hidden;
   scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x}
 .tabs .gen::-webkit-scrollbar{display:none}
@@ -164,7 +165,9 @@ a{color:inherit;text-decoration:none}
   .top{height:64px;padding:0 16px}
   .logo b{font-size:23px}.logo small{font-size:7.5px}
   .top .lbl{font-size:9px}.top .r{display:none}
-  .tabs{top:max(72px,calc(50% - var(--H)/2 - 47px - var(--tb)))}
+  /* no celular o contador sai do cabeçalho e vira uma 3ª linha, abaixo dos gêneros (--tb = 32+8+32+8+12) */
+  .tabs{--tb:92px;top:max(72px,calc(50% - var(--H)/2 - 47px - var(--tb)))}
+  .tabs .cnt{display:block}
   .tabs button{padding:0 13px}
   .tabs .gen{max-width:calc(100% - 32px)}
   .c-title{font-size:24px}
@@ -186,7 +189,7 @@ a{color:inherit;text-decoration:none}
   <div class="r lbl" id="count"></div>
 </header>
 
-<nav class="tabs lbl" id="tabs" aria-label="Gêneros"><div class="gen" id="gen"><span class="ind" id="ind"></span></div></nav>
+<nav class="tabs lbl" id="tabs" aria-label="Gêneros"><div class="gen" id="gen"><span class="ind" id="ind"></span></div><div class="cnt" id="count2"></div></nav>
 
 <section class="shelf" id="shelf" aria-label="Prateleira de livros">
   <div class="stage" id="stage"></div>
@@ -481,7 +484,9 @@ for (let v = 0; v < L; v++) {
   tapes.push(t);
 }
 function contar() {
-  $('count').textContent = NV === N ? `${N} ${N === 1 ? 'livro lido' : 'livros lidos'}` : `${NV} de ${N} livros`;
+  // 'count' fica no cabeçalho (computador); 'count2' abaixo dos gêneros (celular)
+  $('count').textContent = $('count2').textContent =
+    NV === N ? `${N} ${N === 1 ? 'livro lido' : 'livros lidos'}` : `${NV} de ${N} livros`;
 }
 contar();
 
