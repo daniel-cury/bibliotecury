@@ -41,10 +41,24 @@ a{color:inherit;text-decoration:none}
 .logo small{font-family:var(--sans);font-weight:600;font-size:9px;letter-spacing:.34em;padding-left:.34em;text-transform:uppercase}
 
 /* tabs */
-.tabs{position:fixed;left:50%;transform:translateX(-50%);top:calc(50% - var(--H)/2 - 86px);display:flex;z-index:30;max-width:calc(100vw - 32px)}
-.tabs .ind{position:absolute;left:0;top:0;height:23px;background:var(--cobalt);width:0;transition:width .6s var(--ease),transform .6s var(--ease)}
-.tabs button{position:relative;height:23px;padding:0 11px;border:1px solid var(--rule);margin-left:-1px;transition:color .45s var(--ease)}
+/* "Todos" centralizado em cima; embaixo, os gêneros numa barra que rola na horizontal.
+   --tb = altura das duas linhas (32 + 8 + 32); o max() impede que encoste no cabeçalho em telas baixas */
+.tabs{--tb:72px;position:fixed;left:0;right:0;top:max(92px,calc(50% - var(--H)/2 - 50px - var(--tb)));
+  display:flex;flex-direction:column;align-items:center;gap:8px;z-index:30}
+.tabs button{position:relative;height:32px;padding:0 14px;font-size:12px;border:1px solid var(--rule);margin-left:-1px;
+  transition:color .45s var(--ease),background-color .45s var(--ease)}
 .tabs button.on{color:#fff}
+.tabs .todos.on{background:var(--cobalt)}
+.tabs .gen{position:relative;display:flex;max-width:min(980px,calc(100% - 64px));overflow-x:auto;overflow-y:hidden;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x}
+.tabs .gen::-webkit-scrollbar{display:none}
+.tabs .gen button:first-of-type{margin-left:0}
+.tabs .ind{position:absolute;left:0;top:0;height:32px;background:var(--cobalt);width:0;
+  transition:width .6s var(--ease),transform .6s var(--ease),opacity .45s var(--ease)}
+/* esmaece as bordas quando há mais gêneros escondidos */
+.tabs .gen.esq{-webkit-mask-image:linear-gradient(90deg,transparent,#000 28px);mask-image:linear-gradient(90deg,transparent,#000 28px)}
+.tabs .gen.dir{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
+.tabs .gen.esq.dir{-webkit-mask-image:linear-gradient(90deg,transparent,#000 28px,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,transparent,#000 28px,#000 calc(100% - 28px),transparent)}
 
 /* shelf */
 .shelf{position:fixed;left:0;right:0;top:calc(50% - var(--H)/2 - 40px);height:calc(var(--H) + 80px);perspective:2200px;perspective-origin:50% 50%;touch-action:pan-y;z-index:10;
@@ -150,8 +164,9 @@ a{color:inherit;text-decoration:none}
   .top{height:64px;padding:0 16px}
   .logo b{font-size:23px}.logo small{font-size:7.5px}
   .top .lbl{font-size:9px}.top .r{display:none}
-  .tabs{top:calc(50% - var(--H)/2 - 70px)}
-  .tabs button{padding:0 7px;font-size:9px}
+  .tabs{top:max(72px,calc(50% - var(--H)/2 - 47px - var(--tb)))}
+  .tabs button{padding:0 13px}
+  .tabs .gen{max-width:calc(100% - 32px)}
   .c-title{font-size:24px}
   .arrow.prev{left:6px}.arrow.next{right:6px}
   .foot{left:16px;right:16px;bottom:18px}.foot .lbl{font-size:9px}
@@ -171,7 +186,7 @@ a{color:inherit;text-decoration:none}
   <div class="r lbl" id="count"></div>
 </header>
 
-<nav class="tabs lbl" id="tabs" aria-label="Gêneros"><span class="ind" id="ind"></span></nav>
+<nav class="tabs lbl" id="tabs" aria-label="Gêneros"><div class="gen" id="gen"><span class="ind" id="ind"></span></div></nav>
 
 <section class="shelf" id="shelf" aria-label="Prateleira de livros">
   <div class="stage" id="stage"></div>
@@ -328,7 +343,10 @@ const LIVROS = (lista || []).filter(Boolean)
 if (!LIVROS.length) return;
 const N = LIVROS.length;
 const L = N; // cada livro aparece uma vez (sem prateleira infinita)
-const clampT = x => Math.max(0, Math.min(N - 1, x));
+// filtro por gênero: VIS guarda os índices (em LIVROS) dos livros que estão na prateleira agora
+let VIS = LIVROS.map((_, i) => i), NV = N;
+const clampT = x => Math.max(0, Math.min(NV - 1, x));
+const livroEm = x => VIS[Math.max(0, Math.min(NV - 1, Math.round(x)))]; // posição na prateleira → índice em LIVROS
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const E = 'cubic-bezier(.2,.8,.2,1)';
 const $ = id => document.getElementById(id);
@@ -454,14 +472,18 @@ for (let v = 0; v < L; v++) {
   el.innerHTML = `<div class="face sp" style="--c:${esc(b.cor)}${b.letra ? ';color:' + esc(b.letra) : ''}"><span class="mk"></span><span class="t">${esc(b.titulo)}</span><span class="a">${esc(surname(b.autor))}</span><b class="n">${String(i + 1).padStart(2, '0')}</b></div>
     <div class="face bk" style="--c:${esc(b.cor)}"></div>
     <div class="face cv"><svg viewBox="0 0 400 600" preserveAspectRatio="none">${COVERS[i]}</svg></div>`;
-  const t = { el, v, i, sp: el.children[0], cv: el.children[2], lift: 0, liftT: 0, vis: true };
+  // slot = posição na prateleira filtrada (-1 = fora do filtro)
+  const t = { el, v, i, slot: i, sp: el.children[0], cv: el.children[2], lift: 0, liftT: 0, vis: true };
   el.addEventListener('pointerenter', () => { t.liftT = 1; hoverTape = t; });
   el.addEventListener('pointerleave', () => { t.liftT = 0; if (hoverTape === t) hoverTape = null; });
   el.addEventListener('click', e => onTapeClick(t, e));
   stage.appendChild(el);
   tapes.push(t);
 }
-$('count').textContent = `${N} ${N === 1 ? 'livro lido' : 'livros lidos'}`;
+function contar() {
+  $('count').textContent = NV === N ? `${N} ${N === 1 ? 'livro lido' : 'livros lidos'}` : `${NV} de ${N} livros`;
+}
+contar();
 
 /* ---------- medidas ---------- */
 let H, ws, d, gap, W, Hv, shelfCY;
@@ -488,19 +510,65 @@ let last = performance.now();
 
 /* ---------- abas (gêneros) ---------- */
 const genres = [...new Set(LIVROS.map(b => b.genero).filter(Boolean))]; // já na ordem da prateleira
-const tabsEl = $('tabs'), ind = $('ind');
+const tabsEl = $('tabs'), genEl = $('gen'), ind = $('ind'), shelfEl = $('shelf');
 const tabBtns = [];
-function mkTab(label, fn) { const bt = document.createElement('button'); bt.textContent = label; bt.addEventListener('click', fn); tabsEl.appendChild(bt); return bt; }
-mkTab('Todos', () => goTo(0));
-// cada aba leva ao primeiro livro do gênero (os gêneros ficam juntos na prateleira)
-genres.forEach(g => tabBtns.push([g, mkTab(g, () => goTo(LIVROS.findIndex(b => b.genero === g)))]));
-function goTo(i) { T = clampT(i); }
+function mkTab(label, fn, parent) { const bt = document.createElement('button'); bt.textContent = label; bt.addEventListener('click', fn); parent.appendChild(bt); return bt; }
+// "Todos" fica numa linha própria, centralizada, acima da barra de gêneros
+const todosBt = mkTab('Todos', () => filtrar(null), tabsEl);
+todosBt.classList.add('todos');
+tabsEl.insertBefore(todosBt, genEl);
+// cada aba deixa na prateleira só os livros daquele gênero
+genres.forEach(g => tabBtns.push([g, mkTab(g, () => filtrar(g), genEl)]));
+
+let filtro = null; // null = todos os livros
+function filtrar(g) {
+  if (g === filtro || isOpen) return;
+  filtro = g;
+  placeTabs();
+  const atual = active;
+  const troca = () => {
+    VIS = LIVROS.map((_, i) => i).filter(i => !filtro || LIVROS[i].genero === filtro);
+    NV = VIS.length;
+    tapes.forEach(t => { t.slot = VIS.indexOf(t.i); t.liftT = t.lift = 0; });
+    if (hoverTape && hoverTape.slot < 0) hoverTape = null;
+    // se o livro atual continua na prateleira, fica nele; senão, vai para o meio
+    const k = VIS.indexOf(atual);
+    s = T = k >= 0 ? k : Math.floor((NV - 1) / 2);
+    contar();
+  };
+  shelfEl.getAnimations().forEach(a => a.cancel());
+  if (reduce) { troca(); return; }
+  shelfEl.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, easing: 'ease-out', fill: 'forwards' }).onfinish = () => {
+    troca();
+    shelfEl.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 450, easing: E, fill: 'forwards' });
+  };
+}
+// marca as bordas da barra que ainda têm gêneros escondidos (para o degradê)
+function edgeTabs() {
+  const max = genEl.scrollWidth - genEl.clientWidth;
+  genEl.classList.toggle('esq', max > 1 && genEl.scrollLeft > 1);
+  genEl.classList.toggle('dir', max > 1 && genEl.scrollLeft < max - 1);
+}
+genEl.addEventListener('scroll', edgeTabs, { passive: true });
+let tabGen;
 function placeTabs() {
-  const g = active >= 0 ? LIVROS[active].genero : null;
+  const g = filtro;
+  todosBt.classList.toggle('on', !g);
+  ind.style.opacity = g ? 1 : 0;
   tabBtns.forEach(([name, bt]) => {
     const on = name === g; bt.classList.toggle('on', on);
-    if (on) { ind.style.width = bt.offsetWidth + 'px'; ind.style.transform = `translateX(${bt.offsetLeft}px)`; }
+    if (on) {
+      // vindo de "Todos", o marcador aparece já no lugar (sem deslizar desde a ponta)
+      if (!tabGen) { ind.style.transition = 'opacity .45s'; }
+      ind.style.width = bt.offsetWidth + 'px'; ind.style.transform = `translateX(${bt.offsetLeft}px)`;
+      if (!tabGen) { ind.offsetWidth; ind.style.transition = ''; }
+      // quando o gênero muda, rola a barra para deixar a aba escolhida no meio
+      if (g !== tabGen && genEl.scrollWidth > genEl.clientWidth)
+        genEl.scrollTo({ left: bt.offsetLeft - (genEl.clientWidth - bt.offsetWidth) / 2, behavior: 'smooth' });
+    }
   });
+  tabGen = g;
+  edgeTabs();
 }
 
 /* ---------- legenda ---------- */
@@ -531,10 +599,10 @@ function setActive(i, dir) {
 let suppressClick = false;
 function onTapeClick(t, e) {
   if (suppressClick) { suppressClick = false; return; }
-  const r = rel(t.v);
+  const r = rel(t);
   if (Math.abs(r) < .5) openDetail(); else T = clampT(Math.round(T + r));
 }
-const rel = v => v - s;
+const rel = t => t.slot - s;
 $('prev').addEventListener('click', () => { T = clampT(Math.round(T) - 1); });
 $('next').addEventListener('click', () => { T = clampT(Math.round(T) + 1); });
 $('play').addEventListener('click', () => openDetail());
@@ -549,6 +617,13 @@ addEventListener('keydown', e => {
 let wheelTimer = 0;
 addEventListener('wheel', e => {
   if (isOpen) return;
+  // deixa a barra de gêneros rolar sozinha quando ela não cabe na tela
+  // (a roda vertical do mouse também rola a barra para o lado)
+  if (genEl.contains(e.target) && genEl.scrollWidth > genEl.clientWidth) {
+    e.preventDefault();
+    genEl.scrollLeft += Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    return;
+  }
   e.preventDefault();
   const dl = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
   T = clampT(T + dl / (ws + gap) * .5);
@@ -564,7 +639,7 @@ addEventListener('pointermove', e => {
     if (dragging) {
       let raw = down.T0 - dx / (ws + gap);
       // elástico: além das pontas a prateleira cede só um pouco
-      if (raw < 0) raw *= .3; else if (raw > N - 1) raw = N - 1 + (raw - (N - 1)) * .3;
+      if (raw < 0) raw *= .3; else if (raw > NV - 1) raw = NV - 1 + (raw - (NV - 1)) * .3;
       T = raw;
     }
   }
@@ -584,7 +659,7 @@ addEventListener('pointerover', e => {
   const el = e.target instanceof Element ? e.target : null;
   overBtn = !!(el && el.closest('button, a') && !el.closest('.shelf'));
   const tp = el && el.closest('.tape');
-  overSpine = !!(tp && tapes.find(t => t.el === tp && Math.abs(rel(t.v)) > .5));
+  overSpine = !!(tp && tapes.find(t => t.el === tp && Math.abs(rel(t)) > .5));
 });
 
 /* ---------- loop ---------- */
@@ -594,9 +669,9 @@ function frame(now) {
   else { const k = dragging ? 18 : 5.2; s += (T - s) * (1 - Math.exp(-k * dt)); }
   if (Math.abs(T - s) < 1e-4) s = T;
   $('prev').disabled = Math.round(T) <= 0;
-  $('next').disabled = Math.round(T) >= N - 1;
+  $('next').disabled = Math.round(T) >= NV - 1;
 
-  const a = mod(Math.round(s), N);
+  const a = livroEm(s);
   if (a !== active) setActive(a, Math.sign(T - s) || 1);
 
   const settled = Math.abs(T - s) < .3;
@@ -608,8 +683,8 @@ function frame(now) {
   const kl = reduce ? 1 : 1 - Math.exp(-12 * dt);
 
   for (const t of tapes) {
-    const r = rel(t.v), x = F(r);
-    const vis = Math.abs(x) < W / 2 + 1.5 * d;
+    const r = rel(t), x = F(r);
+    const vis = t.slot >= 0 && Math.abs(x) < W / 2 + 1.5 * d;
     if (vis !== t.vis) { t.el.style.visibility = vis ? '' : 'hidden'; t.vis = vis; }
     if (!vis) continue;
     const o = ss(Math.max(0, 1 - Math.abs(r)));
@@ -645,8 +720,8 @@ $('blobs').innerHTML = BLOBS.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="0"/
 const circles = [...$('blobs').children];
 let inkRaf = 0;
 function coverRect() {
-  const v = mod(Math.round(T), L);
-  const t = tapes.find(tt => tt.v === v);
+  const k = Math.round(T);
+  const t = tapes.find(tt => tt.slot === k);
   const r = t.cv.getBoundingClientRect();
   // desfaz a caixa envolvente da rotação de 4.5° para achar a capa real
   const th = 4.5 * Math.PI / 180, c = Math.cos(th), sn = Math.sin(th), c2 = Math.cos(2 * th);
@@ -659,7 +734,7 @@ function openDetail() {
   if (isOpen) return;
   T = Math.round(T);
   isOpen = true;
-  const i = mod(T, N), b = LIVROS[i];
+  const i = livroEm(T), b = LIVROS[i];
   $('dSub').textContent = b.autor;
   $('dTitle').textContent = b.titulo;
   $('dMeta').textContent = [b.ano, b.genero, b.paginas ? b.paginas + ' páginas' : ''].filter(Boolean).join(' / ');
@@ -724,7 +799,7 @@ function closeDetail() {
 }
 
 measure();
-setActive(mod(Math.round(s), N), 0);
+setActive(livroEm(s), 0);
 requestAnimationFrame(frame);
 if (document.fonts) document.fonts.ready.then(() => { measure(); });
 }

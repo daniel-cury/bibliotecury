@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bibliotecury · celular</title>
+<style>
+:root{
+  --paper:#EDEBE6; --ink:#141414; --muted:#6D6A63; --cobalt:#1F3FB0; --verm:#D9472B;
+  --frame:#1a1a1a;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  background:var(--paper); color:var(--ink);
+  font:14px/1.4 "Inter Tight",system-ui,sans-serif;
+  display:flex; flex-direction:column; min-height:100vh;
+}
+header{
+  display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center;
+  padding:12px 16px; border-bottom:1px solid rgba(20,20,20,.15);
+  background:#F4F2ED; position:sticky; top:0; z-index:5;
+}
+header h1{font-size:15px; margin:0 8px 0 0; font-weight:600}
+header h1 span{color:var(--verm)}
+label{display:flex; align-items:center; gap:6px; color:var(--muted)}
+select,input,button{
+  font:inherit; color:var(--ink); background:#fff;
+  border:1px solid rgba(20,20,20,.25); border-radius:6px; padding:5px 8px;
+}
+input[type=text]{width:170px}
+input[type=number]{width:64px}
+button{cursor:pointer}
+button:hover{border-color:var(--cobalt); color:var(--cobalt)}
+.info{margin-left:auto; color:var(--muted); font-variant-numeric:tabular-nums}
+
+main{
+  flex:1; display:flex; flex-wrap:wrap; gap:40px; justify-content:center; align-items:flex-start;
+  padding:32px 16px 48px; overflow:auto;
+}
+.device{display:flex; flex-direction:column; align-items:center; gap:10px}
+.device .nome{color:var(--muted); font-size:12px}
+.scaler{transform-origin:top left}
+.phone{
+  position:relative; background:var(--frame);
+  border-radius:var(--r-out); padding:var(--bezel);
+  box-shadow:0 0 0 2px #333, 0 20px 50px rgba(0,0,0,.25);
+}
+.screen{
+  position:relative; overflow:hidden; background:#fff;
+  border-radius:var(--r-in);
+}
+.screen iframe{display:block; border:0; background:#fff}
+/* recorte da câmera (notch / ilha) */
+.cut{
+  position:absolute; left:50%; top:8px; transform:translateX(-50%);
+  background:#000; border-radius:20px; z-index:2; pointer-events:none;
+}
+.phone.land .cut{top:50%; left:8px; transform:translateY(-50%)}
+.status{
+  position:absolute; inset:0 0 auto 0; height:var(--sb);
+  display:flex; justify-content:space-between; align-items:center;
+  padding:0 26px; font:600 13px system-ui,sans-serif; color:#000;
+  pointer-events:none; z-index:1; mix-blend-mode:difference; filter:invert(1);
+}
+.phone.land .status{display:none}
+.home{
+  position:absolute; bottom:7px; left:50%; transform:translateX(-50%);
+  width:120px; height:4px; border-radius:3px; background:rgba(0,0,0,.55);
+  pointer-events:none; z-index:2;
+}
+.toggle{display:flex; gap:6px; align-items:center}
+@media (max-width:700px){ .info{margin-left:0; width:100%} }
+</style>
+</head>
+<body>
+<header>
+  <h1>bibliotecury <span>·</span> simulador de celular</h1>
+  <label>Aparelho
+    <select id="aparelho"></select>
+  </label>
+  <label>Página
+    <input id="url" type="text" value="index.html" spellcheck="false">
+  </label>
+  <label>Zoom
+    <select id="zoom">
+      <option value="auto">Ajustar</option>
+      <option value="1">100%</option>
+      <option value="0.85">85%</option>
+      <option value="0.7">70%</option>
+      <option value="0.5">50%</option>
+    </select>
+  </label>
+  <button id="girar" title="Girar (R)">↻ Girar</button>
+  <button id="recarregar" title="Recarregar (Ctrl+R no iframe)">⟳ Recarregar</button>
+  <label class="toggle"><input id="todos" type="checkbox"> Comparar todos</label>
+  <span class="info" id="info"></span>
+</header>
+<main id="palco"></main>
+
+<script>
+// Tamanhos em pixels CSS (viewport real dos aparelhos)
+const APARELHOS = [
+  {id:"se",     nome:"iPhone SE",            w:375, h:667, sb:20, corte:null,              r:[38,0],  bezel:[14,60]},
+  {id:"i15",    nome:"iPhone 15 / 14 Pro",   w:393, h:852, sb:54, corte:{w:120,h:34,t:11}, r:[56,46], bezel:[12,12]},
+  {id:"i15pm",  nome:"iPhone 15 Pro Max",    w:430, h:932, sb:54, corte:{w:124,h:36,t:11}, r:[60,50], bezel:[12,12]},
+  {id:"pixel",  nome:"Pixel 7",              w:412, h:915, sb:32, corte:{w:16,h:16,t:12},  r:[44,34], bezel:[11,11]},
+  {id:"s23",    nome:"Galaxy S23",           w:360, h:780, sb:32, corte:{w:14,h:14,t:12},  r:[40,30], bezel:[10,10]},
+  {id:"a",      nome:"Android pequeno",      w:320, h:640, sb:24, corte:null,              r:[30,8],  bezel:[10,30]},
+];
+
+const $ = s => document.querySelector(s);
+const palco = $("#palco"), selAp = $("#aparelho"), selZoom = $("#zoom");
+const inpUrl = $("#url"), chkTodos = $("#todos"), info = $("#info");
+
+let estado = {ap:"i15", land:false, zoom:"auto", url:"index.html", todos:false};
+try { Object.assign(estado, JSON.parse(localStorage.getItem("sim-celular") || "{}")); } catch(e){}
+const salvar = () => { try { localStorage.setItem("sim-celular", JSON.stringify(estado)); } catch(e){} };
+
+APARELHOS.forEach(a => selAp.add(new Option(`${a.nome} — ${a.w}×${a.h}`, a.id)));
+selAp.value = estado.ap; selZoom.value = estado.zoom; inpUrl.value = estado.url; chkTodos.checked = estado.todos;
+
+function montar(a){
+  const land = estado.land;
+  const W = land ? a.h : a.w, H = land ? a.w : a.h;
+  const [bx, by] = a.bezel;                 // borda lateral / superior+inferior
+  const padX = land ? by : bx, padY = land ? bx : by;
+
+  const dev = document.createElement("div");
+  dev.className = "device";
+  dev.innerHTML = `
+    <div class="scaler">
+      <div class="phone ${land ? "land" : ""}">
+        <div class="screen">
+          <iframe title="${a.nome}" loading="lazy"></iframe>
+          ${a.corte ? `<div class="cut"></div>` : ""}
+          <div class="status"><span>9:41</span><span>▂▄▆ ▮</span></div>
+          ${a.corte ? `<div class="home"></div>` : ""}
+        </div>
+      </div>
+    </div>
+    <div class="nome">${a.nome} · ${W}×${H}</div>`;
+
+  const phone = dev.querySelector(".phone"), screen = dev.querySelector(".screen");
+  const ifr = dev.querySelector("iframe"), cut = dev.querySelector(".cut");
+  phone.style.setProperty("--r-out", a.r[0] + "px");
+  phone.style.setProperty("--r-in", a.r[1] + "px");
+  phone.style.padding = `${padY}px ${padX}px`;
+  screen.style.setProperty("--sb", a.sb + "px");
+  ifr.width = W; ifr.height = H;
+  ifr.src = estado.url;
+  if (cut){
+    cut.style.width  = (land ? a.corte.h : a.corte.w) + "px";
+    cut.style.height = (land ? a.corte.w : a.corte.h) + "px";
+    if (land) cut.style.left = a.corte.t + "px"; else cut.style.top = a.corte.t + "px";
+  }
+
+  const fullW = W + padX*2, fullH = H + padY*2;
+  dev._dim = {fullW, fullH};
+  return dev;
+}
+
+function escala(fullW, fullH){
+  if (estado.zoom !== "auto") return +estado.zoom;
+  const header = document.querySelector("header").offsetHeight;
+  const altDisp = window.innerHeight - header - 100;
+  const largDisp = window.innerWidth - 32;
+  return Math.min(1, altDisp / fullH, largDisp / fullW);
+}
+
+function render(){
+  palco.innerHTML = "";
+  const lista = estado.todos ? APARELHOS : [APARELHOS.find(a => a.id === estado.ap) || APARELHOS[1]];
+  lista.forEach(a => {
+    const dev = montar(a);
+    palco.appendChild(dev);
+    const s = estado.todos && estado.zoom === "auto" ? Math.min(0.6, escala(dev._dim.fullW, dev._dim.fullH)) : escala(dev._dim.fullW, dev._dim.fullH);
+    const sc = dev.querySelector(".scaler");
+    sc.style.transform = `scale(${s})`;
+    sc.style.width = dev._dim.fullW * s + "px";
+    sc.style.height = dev._dim.fullH * s + "px";
+  });
+  const a = lista[0];
+  info.textContent = estado.todos
+    ? `${lista.length} aparelhos · ${estado.land ? "paisagem" : "retrato"}`
+    : `viewport ${estado.land ? a.h : a.w}×${estado.land ? a.w : a.h} px · ${estado.land ? "paisagem" : "retrato"}`;
+  selAp.disabled = estado.todos;
+  salvar();
+}
+
+selAp.onchange = () => { estado.ap = selAp.value; render(); };
+selZoom.onchange = () => { estado.zoom = selZoom.value; render(); };
+chkTodos.onchange = () => { estado.todos = chkTodos.checked; render(); };
+inpUrl.onchange = () => { estado.url = inpUrl.value.trim() || "index.html"; render(); };
+$("#girar").onclick = () => { estado.land = !estado.land; render(); };
+$("#recarregar").onclick = () => palco.querySelectorAll("iframe").forEach(f => { f.src = estado.url; });
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+  if (e.key === "r" || e.key === "R") { estado.land = !estado.land; render(); }
+});
+let t; window.addEventListener("resize", () => { clearTimeout(t); t = setTimeout(render, 150); });
+render();
+</script>
+</body>
+</html>
